@@ -330,9 +330,9 @@ const STREDISKA = {tridirna:{label:'Třídírna',color:'#e6a800'}, sklad:{label:
 const WEEKDAY_CS=['Ne','Po','Út','St','Čt','Pá','So'];
 
 // Denní přehled firmy — jednorázový snímek reálných dat z Pokladny/Výkupu/Evidence oprav
-// (natažený 10. 9. 2026 přímo z Firebase, viz chat). Appka běží jako Artifact prototyp,
-// který nesmí volat ven na jiné domény, takže se tahle čísla nemůžou obnovovat sama —
-// až appka poběží jako skutečný hosting (stejně jako sesterské appky), půjde je napojit živě.
+// (natažený 10. 9. 2026 ručně přímo z Firebase, viz chat). Appka teď běží jako živý
+// hosting (GitHub Pages + vlastní Firestore), ale na appky Pokladna/Výkup/Evidence oprav
+// zatím není napojená naživo — to je samostatná budoucí práce, viz workflow dokument.
 const DENNI_PREHLED = {
   snapshotLabel: '10. 9. 2026, 20:51',
   kasa: {
@@ -569,7 +569,7 @@ function renderPrehled(){
   const kc = n => n.toLocaleString('cs-CZ')+' Kč';
 
   document.getElementById('prehled-snap-note').innerHTML =
-    `📸 <strong>Jednorázový snímek</strong> — stav k <strong>${d.snapshotLabel}</strong>. Kasa, výkup a opravy jsou reálná čísla natažená přímo z appek v tuhle chvíli — Artifact prototyp nemůže volat ven, takže se sama neobnoví (živě půjde napojit, až appka poběží jako skutečný hosting). Nakládky/vykládky níže jsou živá data z tohoto prototypu.`;
+    `📸 <strong>Kasa, výkup a opravy</strong> — jednorázový snímek ke stavu <strong>${d.snapshotLabel}</strong>, ručně natažený z appek Pokladna / Výkup palet / Evidence oprav (ty spolu zatím nejsou propojené naživo, viz workflow dokument). Nakládky, úkoly a plán práce níže už jsou živá sdílená data — vidí je v reálném čase Lukáš i Ondra.`;
 
   document.getElementById('prehled-kasa').innerHTML = `
     <div class="ov-big" style="color:${d.kasa.oficialniZustatek>=0?'var(--green)':'var(--red)'}">${kc(d.kasa.oficialniZustatek)}</div>
