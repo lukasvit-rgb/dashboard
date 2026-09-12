@@ -160,6 +160,9 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .photo-thumb-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;padding:0}
 .photo-add{width:72px;height:72px;border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:var(--dim);cursor:pointer;background:var(--bg2);flex-shrink:0}
+.photo-file{position:relative;width:72px;height:72px;border-radius:8px;border:1px solid var(--border);flex-shrink:0;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;padding:2px;overflow:hidden}
+.photo-file .pf-name{font-size:8px;color:var(--dim);line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.photo-thumb-badge{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}
 .checklist-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:13px}
 
 .toast{position:fixed;top:66px;left:50%;transform:translateX(-50%);background:var(--green);color:#ffffff;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;padding:11px 20px;border-radius:8px;z-index:300;opacity:0;transition:opacity .25s;white-space:nowrap;pointer-events:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
@@ -213,23 +216,28 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 
 <!-- PŘEHLED (denní souhrn firmy) -->
 <div class="screen on" id="screen-prehled">
-  <div class="snap-note" id="prehled-snap-note"></div>
+  <div class="sec-lbl">Nakládky dnes</div>
+  <div class="ov-card" id="prehled-nakladky"></div>
 
-  <div class="sec-lbl">Kasa</div>
-  <div class="ov-card" id="prehled-kasa"></div>
+  <div class="sec-lbl">Vykládky dnes</div>
+  <div class="ov-card" id="prehled-vykladky"></div>
 
-  <div class="sec-lbl">Výkup dnes</div>
-  <div class="ov-card" id="prehled-vykup"></div>
+  <div class="sec-lbl">Osobní úkoly</div>
+  <div class="ov-card" id="prehled-osobni"></div>
 
   <div class="sec-lbl">Opravy dnes</div>
   <div class="ov-card" id="prehled-opravy"></div>
 
+  <div class="sec-lbl">Výkup dnes</div>
+  <div class="ov-card" id="prehled-vykup"></div>
+
   <div class="sec-lbl">Třídění dnes</div>
   <div class="ov-card" id="prehled-trideni"></div>
 
-  <div class="sec-lbl">Nakládky a vykládky</div>
-  <div class="ov-card" id="prehled-nakladky"></div>
+  <div class="snap-note" id="prehled-snap-note"></div>
 
+  <div class="sec-lbl">Kasa</div>
+  <div class="ov-card" id="prehled-kasa"></div>
 </div>
 
 <!-- NAKLÁDKY / VYKLÁDKY -->
@@ -326,7 +334,9 @@ function fbDelete(colName, id){
 }
 
 /* ============ DATA ============ */
-const PALLETS = ['EUR A','EUR B','EUR mix','STD palety','100x120','Atypické'];
+// Plný master seznam produktů (typy palet) — viz claude/seznam_produktu_master.md v projektu.
+// "EUR mix" navíc oproti master seznamu: logistická zkratka pro netříděnou dodávku EUR A/B.
+const PALLETS = ['EUR A','EUR B','EUR AC','EUR BC','EUR mix','STD 15','STD 15-C','STD 10','STD 10-C','STD 05','STD 05-C','100×120','100×120-C','100×120 rámová','Atypická','Bedna','Pal. ohrádka','CP3','Paleta 80×60','Paletové víko'];
 const OCEKAVANO = {
   ok:{label:'OK — rovnou sklad', color:'var(--green)'},
   trideni:{label:'Očekává se třídění', color:'var(--yellow)'},
@@ -387,6 +397,7 @@ const DENNI_PREHLED = {
 };
 
 let role = localStorage.getItem('dash_role') || 'owner'; // 'owner' | 'sklad'
+let person = localStorage.getItem('dash_person') || 'Lukáš'; // 'Lukáš' | 'Ondřej' — jen pro roli owner, kvůli "Osobní úkoly" v Přehledu
 let nakladky = [];
 let ukoly   = [];
 let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
@@ -567,6 +578,72 @@ function compressImage(file, maxDim, quality){
   });
 }
 
+/* ============ FOTKY NA GOOGLE DRIVE ============
+   Apps Script Web App jako prostředník — appka nezná žádný servisní klíč,
+   jen veřejnou URL nasazeného skriptu. Návrh viz claude/foto_uloziste_google_drive_navrh.md
+   (projekt "Interní appky - Palety Vít"). Dokud sem není vložená skutečná URL nasazení,
+   appka fotky ukládá při ukládání záznamu starým způsobem (dataURL přímo v dokumentu) —
+   nic se nerozbije, jen se Disk nevyužije. */
+const DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzpLsiFBu1OKJ99UYw4cyjVphgjwXicyKYAAIXW0vl_LF7fTBuNbXSsXMjSZZBvQOzp/exec';
+
+function driveUploadEnabled(){ return !!DRIVE_UPLOAD_URL; }
+
+function sanitizeFileNamePart(s){
+  return (s||'').replace(/[\/\\:*?"<>|]/g,'').trim();
+}
+function driveSlozkaNazev(datum, popis){
+  return `${datum} - ${sanitizeFileNamePart(popis) || '(bez názvu)'}`;
+}
+// Složka pro nakládku/vykládku: "Firma - datum" (dle zadání 12.9.2026) — na rozdíl od
+// driveSlozkaNazev výš (pořád used pro úkoly), kde zůstává pořadí datum - popis.
+function driveSlozkaNazevZakazka(partner, datum){
+  return `${sanitizeFileNamePart(partner) || '(bez názvu)'} - ${datum}`;
+}
+// Názvy fotek podle typu (dle zadání 12.9.2026) — místo kódů (dl, sklad…) plný český název.
+const FOTO_TYP_NAZEV = { dl:'dodací list', sklad:'dobré palety', tridirna:'k třídění', opravna:'k opravě' };
+function fotoTypNazev(typBase, poradi){
+  const zaklad = FOTO_TYP_NAZEV[typBase] || typBase;
+  return poradi>1 ? `${zaklad} ${poradi}` : zaklad;
+}
+function uploadFotoNaDrive(dataUrl, datum, slozka, typNazev){
+  const filename = `${datum}_${sanitizeFileNamePart(typNazev)}.jpg`;
+  return fetch(DRIVE_UPLOAD_URL, {
+    method:'POST',
+    body: JSON.stringify({datum, slozka, typFoto:typNazev, dataUrl, filename})
+  }).then(r=>r.json());
+}
+function smazatFotoZDrive(driveFileId){
+  if(!driveFileId || !driveUploadEnabled()) return Promise.resolve();
+  return fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'smazat', driveFileId})}).catch(()=>{});
+}
+// p může být: null, 'demo' (ukázková data), starý base64 string (záznamy před zavedením Drive),
+// nebo nový objekt {dataUrl?, driveFileId, url, filename} — dataUrl jen dočasně, po dobu editace.
+function photoPreviewSrc(p){
+  if(!p) return null;
+  if(p==='demo') return demoPhotoDataUri();
+  if(typeof p === 'string') return p;
+  if(p.dataUrl) return p.dataUrl;
+  return null; // uložený záznam bez dataUrl — appka fotku dál nezobrazuje, jen odkaz na Disk
+}
+function photoFilenameOf(p){
+  return (p && typeof p==='object' && p.filename) ? p.filename : null;
+}
+function photoBoxInnerHtml(p, placeholderHtml){
+  const src = photoPreviewSrc(p);
+  if(src) return `<img src="${src}">`;
+  const fn = photoFilenameOf(p);
+  if(fn) return `<div style="font-size:28px">📄</div><div>${escapeHtml(fn)}</div><div class="hint">✓ na Disku</div>`;
+  return placeholderHtml;
+}
+// true = fotka je připravená k uložení (hotová/legacy/prázdná), false = ještě čeká na dokončení uploadu
+function fotoJeNahotova(p){
+  return !(p && typeof p==='object' && !p.driveFileId);
+}
+function stripPendingAndDataUrl(p){
+  if(p && typeof p==='object') return {driveFileId:p.driveFileId, url:p.url, filename:p.filename};
+  return p;
+}
+
 /* ============ ROLE ============ */
 function setRole(r){
   role=r; localStorage.setItem('dash_role',r);
@@ -574,6 +651,11 @@ function setRole(r){
   document.getElementById('role-sklad').classList.toggle('on',r==='sklad');
   document.getElementById('zk-btn').style.display = (r==='owner') ? '' : 'none';
   renderAll();
+}
+
+function setPerson(p){
+  person = p; localStorage.setItem('dash_person', p);
+  renderPrehled();
 }
 
 /* ============ TABS ============ */
@@ -594,7 +676,7 @@ function renderPrehled(){
   const snapFull = `<strong>Kasa, výkup a opravy</strong> — jednorázový snímek ke stavu <strong>${d.snapshotLabel}</strong>, ručně natažený z appek Pokladna / Výkup palet / Evidence oprav (ty spolu zatím nejsou propojené naživo, viz workflow dokument).<br><br>Nakládky, úkoly a plán práce níže už jsou živá sdílená data — vidí je v reálném čase Lukáš i Ondra.`;
   document.getElementById('prehled-snap-note').setAttribute('onclick', "showInfoSheet('📸 Jednorázový snímek', " + JSON.stringify(snapFull) + ")");
   document.getElementById('prehled-snap-note').innerHTML =
-    `📸 Kasa/výkup/opravy: snímek k ${d.snapshotLabel} <span class="snap-note-more">Klepni pro info ›</span>`;
+    `📸 Kasa/výkup/opravy: jednorázový snímek <span class="snap-note-more">Info ›</span>`;
 
   document.getElementById('prehled-kasa').innerHTML = `
     <div class="ov-big" style="color:${d.kasa.oficialniZustatek>=0?'var(--green)':'var(--red)'}">${kc(d.kasa.oficialniZustatek)}</div>
@@ -634,8 +716,6 @@ function renderPrehled(){
 
   const today = todayStr();
   const tomorrow = dateToStr(addDays(new Date(),1));
-  const todayList = nakladky.filter(n=>n.datum===today).sort((a,b)=>a.cas.localeCompare(b.cas));
-  const tomorrowList = nakladky.filter(n=>n.datum===tomorrow).sort((a,b)=>a.cas.localeCompare(b.cas));
   const rowHtml = n => {
     const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
     return `<div class="item" style="margin-bottom:6px" onclick="switchToNakladka('${n.id}')">
@@ -648,12 +728,47 @@ function renderPrehled(){
       </div>
     </div>`;
   };
-  let html = '';
-  html += `<div class="ov-day-hdr">Dnes, ${fmtDate(today)}</div>`;
-  html += todayList.length ? todayList.map(rowHtml).join('') : `<div class="empty">Dnes nic naplánováno.</div>`;
-  html += `<div class="ov-day-hdr">Zítra, ${fmtDate(tomorrow)}</div>`;
-  html += tomorrowList.length ? tomorrowList.map(rowHtml).join('') : `<div class="empty">Zítra zatím nic naplánováno.</div>`;
-  document.getElementById('prehled-nakladky').innerHTML = html;
+  const dayBlock = (typ) => {
+    const todayList = nakladky.filter(n=>n.datum===today && n.typ===typ).sort((a,b)=>a.cas.localeCompare(b.cas));
+    const tomorrowList = nakladky.filter(n=>n.datum===tomorrow && n.typ===typ).sort((a,b)=>a.cas.localeCompare(b.cas));
+    const nicDnes = typ==='vykladka' ? 'Dnes žádná vykládka.' : 'Dnes žádná nakládka.';
+    const nicZitra = typ==='vykladka' ? 'Zítra zatím žádná vykládka.' : 'Zítra zatím žádná nakládka.';
+    let h = `<div class="ov-day-hdr">Dnes, ${fmtDate(today)}</div>`;
+    h += todayList.length ? todayList.map(rowHtml).join('') : `<div class="empty">${nicDnes}</div>`;
+    h += `<div class="ov-day-hdr">Zítra, ${fmtDate(tomorrow)}</div>`;
+    h += tomorrowList.length ? tomorrowList.map(rowHtml).join('') : `<div class="empty">${nicZitra}</div>`;
+    return h;
+  };
+  document.getElementById('prehled-nakladky').innerHTML = dayBlock('nakladka');
+  document.getElementById('prehled-vykladky').innerHTML = dayBlock('vykladka');
+
+  const showPersonSwitch = role==='owner';
+  const myTasks = role==='sklad'
+    ? ukoly.filter(u=>u.stav!=='vyrizene' && u.resitel==='Martin')
+    : ukoly.filter(u=>u.stav!=='vyrizene' && u.resitel===person);
+  myTasks.sort((a,b)=> (isOverdue(b)-isOverdue(a)) || a.termin.localeCompare(b.termin));
+  let osobniHtml = '';
+  if(showPersonSwitch){
+    osobniHtml += `<div class="seg-pill" style="margin-bottom:10px">
+      <button class="seg-pill-btn ${person==='Lukáš'?'on':''}" onclick="setPerson('Lukáš')">Lukáš</button>
+      <button class="seg-pill-btn ${person==='Ondřej'?'on':''}" onclick="setPerson('Ondřej')">Ondřej</button>
+    </div>`;
+  }
+  if(!myTasks.length){
+    osobniHtml += `<div class="empty">Žádné otevřené úkoly.</div>`;
+  } else {
+    osobniHtml += myTasks.map(u=>{
+      const late = isOverdue(u);
+      return `<div class="item" style="margin-bottom:6px" onclick="openUkol('${u.id}')">
+        <div class="item-dot" style="background:${late?'var(--red)':'var(--blue)'}"></div>
+        <div class="item-body">
+          <div class="item-title">${escapeHtml(u.nazev)} ${late?'<span class="pill pill-late">Po termínu</span>':''}</div>
+          <div class="item-meta">od ${u.zadavatel} · termín ${fmtDate(u.termin)}${u.komentare.length?' · 💬 '+u.komentare.length:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('prehled-osobni').innerHTML = osobniHtml;
 
   document.getElementById('fab-wrap').style.display='none';
 }
@@ -784,13 +899,24 @@ function nkNeshodaHtml(data){
     <textarea class="ftxt" id="nk-neshoda-komentar" placeholder="Co přesně nesedí a v jakém rozsahu" oninput="window._nkData.neshodaKomentar=this.value; nkRefreshDynamic();">${escapeHtml(data.neshodaKomentar||'')}</textarea>
   `;
 }
+function nkPhotoTileHtml(p, field, i){
+  const del = `<button type="button" class="photo-thumb-del" onclick="nkRemovePhoto('${field}',${i})">✕</button>`;
+  const src = photoPreviewSrc(p);
+  if(src){
+    const pending = (p && typeof p==='object' && !p.driveFileId) ? `<div class="photo-thumb-badge">⏳</div>` : '';
+    return `<div class="photo-thumb"><img src="${src}">${pending}${del}</div>`;
+  }
+  const fn = photoFilenameOf(p);
+  if(fn) return `<div class="photo-file">📄<div class="pf-name">${escapeHtml(fn)}</div>${del}</div>`;
+  return `<div class="photo-thumb">${del}</div>`;
+}
 function nkPhotoGridHtml(data, field, label, hint, minCount){
   const arr = data[field] || [];
   const count = arr.length;
   return `
     <div class="field-lbl">${label} ${minCount?`<span style="color:${count>=minCount?'var(--green)':'var(--red)'}">(${count}/${minCount})</span>`:''}</div>
     <div class="photo-grid">
-      ${arr.map((p,i)=>`<div class="photo-thumb"><img src="${p==='demo'?demoPhotoDataUri():p}"><button type="button" class="photo-thumb-del" onclick="nkRemovePhoto('${field}',${i})">✕</button></div>`).join('')}
+      ${arr.map((p,i)=>nkPhotoTileHtml(p,field,i)).join('')}
       <div class="photo-add" onclick="document.getElementById('nk-inp-${field}').click()">📷<br>přidat</div>
     </div>
     <input type="file" accept="image/*" capture="environment" multiple id="nk-inp-${field}" style="display:none" onchange="nkAddPhotos(event,'${field}')">
@@ -863,16 +989,34 @@ function nkAddPhotos(ev, field){
   const files = Array.from(ev.target.files||[]);
   if(!files.length) return;
   toast('⏳ Zpracovávám fotky…');
-  Promise.all(files.map(f=>compressImage(f))).then(results=>{
-    const d = window._nkData;
-    d[field] = (d[field]||[]).concat(results);
+  const d = window._nkData;
+  Promise.all(files.map(f=>compressImage(f))).then(dataUrls=>{
+    if(!driveUploadEnabled()){
+      d[field] = (d[field]||[]).concat(dataUrls);
+      nkRefreshDynamic();
+      return;
+    }
+    const typBase = {fotoSklad:'sklad', fotoTridirna:'tridirna', fotoOpravna:'opravna'}[field] || field;
+    const startIdx = (d[field]||[]).length;
+    const items = dataUrls.map(dataUrl=>({dataUrl, driveFileId:null, url:null, filename:null}));
+    d[field] = (d[field]||[]).concat(items);
     nkRefreshDynamic();
+    const slozka = driveSlozkaNazevZakazka(d.partner, d.datum);
+    items.forEach((item,i)=>{
+      uploadFotoNaDrive(item.dataUrl, d.datum, slozka, fotoTypNazev(typBase, startIdx+i+1)).then(res=>{
+        item.driveFileId = res.driveFileId; item.url = res.url; item.filename = res.filename;
+        nkRefreshDynamic();
+      }).catch(()=>toast('⚠ Nahrání na Disk selhalo, fotka zůstává jen v appce'));
+    });
   });
   ev.target.value = '';
 }
 function nkRemovePhoto(field, idx){
   const d = window._nkData;
-  d[field] = (d[field]||[]).filter((_,i)=>i!==idx);
+  const arr = d[field]||[];
+  const removed = arr[idx];
+  d[field] = arr.filter((_,i)=>i!==idx);
+  if(removed && removed.driveFileId) smazatFotoZDrive(removed.driveFileId);
   nkRefreshDynamic();
 }
 
@@ -922,7 +1066,7 @@ function renderNakladkaSheet(){
     ${data.typ==='vykladka' ? `
     <div class="field-lbl">Foto dodacího listu</div>
     <div class="photo-box" onclick="document.getElementById('nk-dlfoto-inp').click()">
-      ${data.dlFoto ? `<img src="${data.dlFoto==='demo'?demoPhotoDataUri():data.dlFoto}">` : `<div>📷 Klepni pro vyfocení / nahrání DL</div>`}
+      ${photoBoxInnerHtml(data.dlFoto, '<div>📷 Klepni pro vyfocení / nahrání DL</div>')}
       <div class="hint">${data.dlFoto?'Klepnutím nahradíš fotku':'Povinné — nahrává Martin při příjezdu'}</div>
     </div>
     <input type="file" accept="image/*" capture="environment" id="nk-dlfoto-inp" style="display:none" onchange="nkPhoto(event,'dlFoto')">
@@ -1083,8 +1227,20 @@ function nkPhoto(ev,field){
   toast('⏳ Zpracovávám fotku…');
   compressImage(file).then(dataUrl=>{
     nkSyncFields();
-    window._nkData[field] = dataUrl;
+    const d = window._nkData;
+    if(!driveUploadEnabled()){
+      d[field] = dataUrl;
+      renderNakladkaSheet();
+      return;
+    }
+    const item = {dataUrl, driveFileId:null, url:null, filename:null};
+    d[field] = item;
     renderNakladkaSheet();
+    const slozka = driveSlozkaNazevZakazka(d.partner, d.datum);
+    uploadFotoNaDrive(dataUrl, d.datum, slozka, fotoTypNazev(field==='dlFoto'?'dl':field, 1)).then(res=>{
+      item.driveFileId = res.driveFileId; item.url = res.url; item.filename = res.filename;
+      renderNakladkaSheet();
+    }).catch(()=>toast('⚠ Nahrání na Disk selhalo, fotka zůstává jen v appce'));
   });
 }
 
@@ -1095,6 +1251,17 @@ function nkSave(stav){
   if(stav==='vyrizene' && !nkCanClose(d)){
     toast('⚠ Nejdou splněné podmínky pro Vyřízeno — zkontroluj checklist');
     return;
+  }
+
+  if(driveUploadEnabled()){
+    const arrFields = ['fotoSklad','fotoTridirna','fotoOpravna'];
+    const pending = !fotoJeNahotova(d.dlFoto) || arrFields.some(f=>(d[f]||[]).some(p=>!fotoJeNahotova(p)));
+    if(pending){
+      toast('⏳ Fotky se ještě nahrávají na Disk, počkej chvíli a zkus to znovu');
+      return;
+    }
+    d.dlFoto = stripPendingAndDataUrl(d.dlFoto);
+    arrFields.forEach(f=>{ d[f] = (d[f]||[]).map(stripPendingAndDataUrl); });
   }
 
   if(!docSizeOk(d)){
@@ -1316,7 +1483,7 @@ function renderUkolSheet(){
 
     <div class="field-lbl">Foto</div>
     <div class="photo-box" onclick="document.getElementById('uk-foto-inp').click()">
-      ${d.foto ? `<img src="${d.foto}">` : `<div>📷 Klepni pro přidání fotky</div>`}
+      ${photoBoxInnerHtml(d.foto, '<div>📷 Klepni pro přidání fotky</div>')}
       <div class="hint">Nepovinné, ale doporučené u hlášení problémů</div>
     </div>
     <input type="file" accept="image/*" capture="environment" id="uk-foto-inp" style="display:none" onchange="ukPhoto(event)">
@@ -1345,7 +1512,24 @@ function ukSetPrio(p){ ukSyncFields(); window._ukData.priorita=p; renderUkolShee
 function ukPhoto(ev){
   const file = ev.target.files[0]; if(!file) return;
   toast('⏳ Zpracovávám fotku…');
-  compressImage(file).then(dataUrl=>{ ukSyncFields(); window._ukData.foto = dataUrl; renderUkolSheet(); });
+  compressImage(file).then(dataUrl=>{
+    ukSyncFields();
+    const d = window._ukData;
+    if(!driveUploadEnabled()){
+      d.foto = dataUrl;
+      renderUkolSheet();
+      return;
+    }
+    const item = {dataUrl, driveFileId:null, url:null, filename:null};
+    d.foto = item;
+    renderUkolSheet();
+    const datum = todayStr();
+    const slozka = driveSlozkaNazev(datum, 'Úkol - '+d.nazev);
+    uploadFotoNaDrive(dataUrl, datum, slozka, 'ukol').then(res=>{
+      item.driveFileId = res.driveFileId; item.url = res.url; item.filename = res.filename;
+      renderUkolSheet();
+    }).catch(()=>toast('⚠ Nahrání na Disk selhalo, fotka zůstává jen v appce'));
+  });
 }
 function ukAddComment(id){
   const inp = document.getElementById('uk-newcomment');
@@ -1364,6 +1548,13 @@ function ukSave(stav){
   d.nazev = d.nazev.trim();
   d.stav = stav;
   if(!d.nazev){ toast('⚠ Zadej název úkolu'); return; }
+  if(driveUploadEnabled()){
+    if(!fotoJeNahotova(d.foto)){
+      toast('⏳ Fotka se ještě nahrává na Disk, počkej chvíli a zkus to znovu');
+      return;
+    }
+    d.foto = stripPendingAndDataUrl(d.foto);
+  }
   if(!docSizeOk(d)){ toast('⚠ Moc velká fotka — vyfoť znovu nebo ji smaž'); return; }
   delete d._isNew;
   const idx = ukoly.findIndex(u=>u.id===d.id);
@@ -1521,6 +1712,7 @@ document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none'
 
 // Funkce volané z onclick atributů v HTML musí být na window, protože jsou v <script type="module">.
 window.setRole = setRole;
+window.setPerson = setPerson;
 window.switchTab = switchTab;
 window.switchToNakladka = switchToNakladka;
 window.weekNav = weekNav;
