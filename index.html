@@ -200,6 +200,17 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .ov-day-hdr{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin:10px 0 4px}
 .ov-day-hdr:first-child{margin-top:0}
 
+/* PROFITABILITA (jen Lukáš) */
+.rent-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.rent-name{flex:1;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700}
+.rent-inp{width:74px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:14px;text-align:center}
+.rent-margin{width:96px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800}
+.profit-card{background:var(--ink);color:#fff;border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+.profit-lbl{font-size:11px;color:#ccc;text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed',sans-serif;font-weight:700}
+.profit-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;white-space:nowrap}
+.profit-val.pos{color:#6fdb96}
+.profit-val.neg{color:#ff8a8a}
+
 @media (min-width:600px){
   .screen{padding:18px 24px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 90px)}
   .fab-wrap{padding:10px 24px}
@@ -261,6 +272,17 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <div class="ov-card" id="prehled-kasa"></div>
 </div>
 
+<!-- PROFITABILITA (jen Lukáš) -->
+<div class="screen" id="screen-profitabilita">
+  <div class="sec-lbl">Zisk z výkupů</div>
+  <div class="chips" id="prof-period-chips"></div>
+  <div id="prof-result"></div>
+
+  <div class="sec-lbl">Prodejní ceny za kus</div>
+  <div id="prof-note"></div>
+  <div id="prof-prices"></div>
+</div>
+
 <!-- NAKLÁDKY / VYKLÁDKY -->
 <div class="screen" id="screen-nakladky">
   <div class="week-nav">
@@ -305,6 +327,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <button class="tabbar-btn" id="tab-nakladky" onclick="switchTab('nakladky',this)"><span class="ic">📦</span><span class="lbl">Nakládky</span></button>
   <button class="tabbar-btn" id="tab-ukoly" onclick="switchTab('ukoly',this)"><span class="ic">✅</span><span class="lbl">Úkoly</span></button>
   <button class="tabbar-btn" id="tab-kapacita" onclick="switchTab('kapacita',this)"><span class="ic">👷</span><span class="lbl">Plán práce</span></button>
+  <button class="tabbar-btn" id="tab-profitabilita" onclick="switchTab('profitabilita',this)" style="display:none"><span class="ic">💰</span><span class="lbl">Profit</span></button>
 </div>
 
 <!-- OVERLAY / SHEET -->
@@ -322,7 +345,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 /* ============ PŘIHLAŠOVÁNÍ ============
@@ -344,6 +367,22 @@ const authFirebaseConfig = {
 };
 const authApp = initializeApp(authFirebaseConfig, "auth");
 const auth = getAuth(authApp);
+// Stejná Firebase instance (projekt vykup-palet) se navíc používá i pro data —
+// appka odsud živě čte kolekce "pokladna" a "vykupy" (appky Pokladna/Výkup palet)
+// pro záložku Přehled, a kolekci "sell_prices" pro záložku Profitabilita.
+const vpdb = getFirestore(authApp);
+
+// Třetí, samostatná Firebase instance — appka Evidence oprav má vlastní projekt.
+const evidenceFirebaseConfig = {
+  apiKey: "AIzaSyDIEzhaFjq5JvgGd3rdxXUdYyTHKmS85S4",
+  authDomain: "evidence-oprav.firebaseapp.com",
+  projectId: "evidence-oprav",
+  storageBucket: "evidence-oprav.firebasestorage.app",
+  messagingSenderId: "1059190480737",
+  appId: "1:1059190480737:web:a50696e0317ca1eb9eef20"
+};
+const evApp = initializeApp(evidenceFirebaseConfig, "evidence");
+const evdb = getFirestore(evApp);
 
 // Role appky: 'owner' = majitel (Lukáš, Ondřej) vidí vždy úplně stejně;
 // 'sklad' = skladník Martin, omezená appka (viz níže).
@@ -401,50 +440,36 @@ const WORKERS = [
 const STREDISKA = {tridirna:{label:'Třídírna',color:'#e6a800'}, sklad:{label:'Sklad',color:'#27ae60'}, opravna:{label:'Opravna',color:'#e05555'}};
 const WEEKDAY_CS=['Ne','Po','Út','St','Čt','Pá','So'];
 
-// Denní přehled firmy — jednorázový snímek reálných dat z Pokladny/Výkupu/Evidence oprav
-// (natažený 10. 9. 2026 ručně přímo z Firebase, viz chat). Appka teď běží jako živý
-// hosting (GitHub Pages + vlastní Firestore), ale na appky Pokladna/Výkup/Evidence oprav
-// zatím není napojená naživo — to je samostatná budoucí práce, viz workflow dokument.
-const DENNI_PREHLED = {
-  snapshotLabel: '10. 9. 2026, 20:51',
-  kasa: {
-    oficialniZustatek: 98346,
-    ukotvenoDatum: '10. 9. 2026',
-    dnesPrijem: 40000,
-    dnesVydaj: 500,
-    neoficialniPrijem: 0,
-    neoficialniVydaj: 500,
-  },
-  vykup: {
-    celkemKc: 7950,
-    pocetZaznamu: 2,
-    polozky: [
-      {n:'EUR B', ks:36},
-      {n:'EUR A', ks:19},
-      {n:'EUR BC', ks:5},
-      {n:'STD 15', ks:1},
-    ],
-  },
-  opravy: {
-    celkemKs: 293,
-    pocetZaznamu: 27,
-    podleDelnika: [
-      {n:'Radek', ks:82},
-      {n:'Pavel', ks:67},
-      {n:'Zavadil', ks:54},
-      {n:'Martin', ks:45},
-      {n:'Pracovník 1', ks:45},
-    ],
-    podleTypu: [
-      {n:'EUR B - lis.', ks:119},
-      {n:'EUR B - dřevo', ks:74},
-      {n:'100x120', ks:45},
-      {n:'STD05', ks:29},
-      {n:'STD10', ks:25},
-      {n:'Bedna', ks:1},
-    ],
-  },
-};
+// Katalog typů palet appky Výkup palet (projekt vykup-palet) — jména i výchozí
+// výkupní ceny odpovídají appce, viz claude/vykup_palet_multiuser_profitabilita_navrh.md.
+// Používá se v Profitabilitě k dopočtu marže (poškozené typy mají jiný fixní náklad).
+const VYKUP_PALLETS = [
+  {id:'eur_a',  n:'EUR A',         p:150},
+  {id:'eur_b',  n:'EUR B',         p:100},
+  {id:'eur_ac', n:'EUR AC',        p:40},
+  {id:'eur_bc', n:'EUR BC',        p:40},
+  {id:'std15',  n:'STD 15',        p:40},
+  {id:'std15c', n:'STD 15-C',      p:10},
+  {id:'std10',  n:'STD 10',        p:40},
+  {id:'std10c', n:'STD 10-C',      p:10},
+  {id:'std05',  n:'STD 05',        p:30},
+  {id:'std05c', n:'STD 05-C',      p:10},
+  {id:'x100',   n:'100×120',       p:50},
+  {id:'x100c',  n:'100×120-C',     p:10},
+  {id:'x100r',  n:'100×120 rámová',p:35},
+  {id:'ohradka',n:'Pal. ohrádka',  p:100},
+  {id:'cp3',    n:'CP3',           p:50},
+  {id:'p8060',  n:'Paleta 80×60',  p:30},
+  {id:'viko',   n:'Paletové víko', p:20},
+  {id:'koval',  n:'Kovové obaly',  p:0},
+  {id:'plast',  n:'Plastové obaly',p:0},
+];
+const VYKUP_DAMAGED_IDS = ['eur_ac','eur_bc','std15c','std10c','std05c','x100c','koval','plast'];
+
+// Pozn. (13.9.2026): denní přehled firmy (Kasa/Výkup/Opravy) byl dřív jednorázový
+// ručně natažený snímek (DENNI_PREHLED). Appka teď čte tahle data naživo přímo
+// z appek Pokladna/Výkup palet/Evidence oprav — viz computePrehledData() níže
+// a nové Firebase instance vpdb/evdb výše.
 
 let role = 'sklad'; // 'owner' | 'sklad' — bezpečný výchozí stav, dokud appka nezná přihlášeného uživatele (viz nastavRoliPoPrihlaseni)
 let person = 'Lukáš'; // 'Lukáš' | 'Ondřej' — jen pro roli owner, kvůli "Osobní úkoly" v Přehledu
@@ -453,6 +478,20 @@ let nakladky = [];
 let ukoly   = [];
 let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
 let zakaznici = []; // {id, nazev, materialy:[typ,...]}
+
+// Živá data Kasa/Výkup/Opravy (jiné Firebase projekty, viz vpdb/evdb výše) a
+// sdílené prodejní ceny pro Profitabilitu — mimo dbReady gate, appka na ně nečeká.
+let pokladnaTx = [];
+let pokladnaAnchor = null;
+let pokladnaError = false;
+let vykupyData = [];
+let vykupyError = false;
+let opravyData = [];
+let opravyError = false;
+let sellPrices = {};
+let sellPricesLoaded = false;
+let sellPricesError = false;
+let profPeriod = 'today'; // today | week | month | all
 
 let weekOffset = 0;
 let selDay = todayStr();
@@ -515,6 +554,41 @@ onSnapshot(COL.workplan, snap => {
   loaded.workplan = true;
   maybeFinishLoading(); if(dbReady) renderAll();
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+/* ============ ŽIVÁ DATA: KASA / VÝKUP / OPRAVY (jiné Firebase projekty) ============
+   Čte se naživo z appek Pokladna + Výkup palet (projekt vykup-palet, přes vpdb) a
+   Evidence oprav (projekt evidence-oprav, přes evdb) pro záložky Přehled a Profitabilita.
+   Schválně mimo maybeFinishLoading/dbReady gate — appka se rozjede i bez těchto dat
+   (karty v Přehledu jen zůstanou "načítám"), protože jde o appky mimo tenhle projekt. */
+onSnapshot(collection(vpdb,'pokladna'), snap => {
+  pokladnaTx = snap.docs.map(d=>d.data());
+  pokladnaError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('pokladna', err); pokladnaError = true; if(dbReady) renderAll(); });
+
+onSnapshot(doc(vpdb,'pokladna_meta','anchor'), snap => {
+  pokladnaAnchor = snap.exists() ? snap.data() : null;
+  if (dbReady) renderAll();
+}, err => { console.error('pokladna_meta/anchor', err); pokladnaAnchor = null; if(dbReady) renderAll(); });
+
+onSnapshot(collection(vpdb,'vykupy'), snap => {
+  vykupyData = snap.docs.map(d=>d.data());
+  vykupyError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('vykupy', err); vykupyError = true; if(dbReady) renderAll(); });
+
+onSnapshot(collection(evdb,'opravy'), snap => {
+  opravyData = snap.docs.map(d=>d.data());
+  opravyError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('opravy', err); opravyError = true; if(dbReady) renderAll(); });
+
+onSnapshot(doc(vpdb,'sell_prices','config'), snap => {
+  sellPrices = snap.exists() ? (snap.data()||{}) : {};
+  sellPricesLoaded = true;
+  sellPricesError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('sell_prices/config', err); sellPricesLoaded = true; sellPricesError = true; if(dbReady) renderAll(); });
 
 const ACTIVITY = {
   trideni:{label:'Třídění', color:'var(--yellow)'},
@@ -707,6 +781,12 @@ function nastavRoliPoPrihlaseni(osoba){
   if (role==='sklad' && activeScreen()==='prehled'){
     switchTab('nakladky', document.getElementById('tab-nakladky'));
   }
+  // Profitabilita je jen pro Lukáše — i kdyby se do ní někdo jiný dostal starým
+  // odkazem/historií prohlížeče, přesměrujeme ho pryč hned po přihlášení.
+  document.getElementById('tab-profitabilita').style.display = jeLukas ? '' : 'none';
+  if (!jeLukas && activeScreen()==='profitabilita'){
+    switchTab('prehled', document.getElementById('tab-prehled'));
+  }
   if (dbReady) renderAll();
 }
 
@@ -778,45 +858,126 @@ function switchTab(id,btn){
 function activeScreen(){ return document.querySelector('.screen.on').id.replace('screen-',''); }
 
 /* ============ RENDER: PŘEHLED (denní souhrn firmy) ============ */
+function computePrehledData(){
+  const now = new Date();
+  const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isToday = ts => { const t = new Date(ts); return !isNaN(t) && t >= today0; };
+
+  // --- KASA (appka Pokladna, kolekce pokladna+pokladna_meta, projekt vykup-palet) ---
+  // Stejná logika jako appka Pokladna sama (renderBalances): zůstatek = ukotvená
+  // hodnota + oficiální příjmy/výdaje od data ukotvení − výkupy od data ukotvení
+  // (výkupy se platí z oficiální kasy). Neoficiální kasa se do zůstatku nepočítá.
+  let oficialniZustatek = null, ukotvenoDatum = null;
+  let dnesPrijem = 0, dnesVydaj = 0, neoficialniPrijem = 0, neoficialniVydaj = 0;
+  if (pokladnaAnchor && pokladnaAnchor.date){
+    let bal = Number(pokladnaAnchor.official) || 0;
+    pokladnaTx.forEach(t=>{
+      if(!t.ts || t.ts < pokladnaAnchor.date) return;
+      const amt = Number(t.amt)||0;
+      if(t.kasa!=='unofficial'){ if(t.typ==='income') bal+=amt; else bal-=amt; }
+    });
+    vykupyData.forEach(v=>{
+      if(!v.ts || v.ts < pokladnaAnchor.date) return;
+      bal -= Number(v.total)||0;
+    });
+    oficialniZustatek = bal;
+    const [ay,am,ad] = pokladnaAnchor.date.split('-');
+    ukotvenoDatum = ad+'. '+am+'. '+ay;
+  }
+  pokladnaTx.forEach(t=>{
+    if(!t.ts || !isToday(t.ts)) return;
+    const amt = Number(t.amt)||0;
+    if(t.kasa==='unofficial'){ if(t.typ==='income') neoficialniPrijem+=amt; else neoficialniVydaj+=amt; }
+    else { if(t.typ==='income') dnesPrijem+=amt; else dnesVydaj+=amt; }
+  });
+  vykupyData.forEach(v=>{ if(v.ts && isToday(v.ts)) dnesVydaj += Number(v.total)||0; });
+
+  // --- VÝKUP (appka Výkup palet, kolekce vykupy, projekt vykup-palet) ---
+  const vykupToday = vykupyData.filter(v=>v.ts && isToday(v.ts));
+  const vykupPolozkyMap = {};
+  vykupToday.forEach(v=>(v.items||[]).forEach(it=>{
+    vykupPolozkyMap[it.n] = (vykupPolozkyMap[it.n]||0) + (Number(it.ks)||0);
+  }));
+
+  // --- OPRAVY (appka Evidence oprav, kolekce opravy, projekt evidence-oprav) ---
+  const todayStrVal = todayStr();
+  const opravyToday = opravyData.filter(o=>o.date===todayStrVal);
+  const delnikMap = {}, typMap = {};
+  opravyToday.forEach(o=>{
+    const jm = o.workerName || ('Pracovník #'+(o.worker??'?'));
+    delnikMap[jm] = (delnikMap[jm]||0) + (Number(o.qty)||0);
+    typMap[o.palletType] = (typMap[o.palletType]||0) + (Number(o.qty)||0);
+  });
+
+  return {
+    kasa: { oficialniZustatek, ukotvenoDatum, dnesPrijem, dnesVydaj, neoficialniPrijem, neoficialniVydaj, chyba: pokladnaError },
+    vykup: {
+      celkemKc: vykupToday.reduce((s,v)=>s+(Number(v.total)||0),0),
+      pocetZaznamu: vykupToday.length,
+      polozky: Object.entries(vykupPolozkyMap).map(([n,ks])=>({n,ks})).sort((a,b)=>b.ks-a.ks),
+      chyba: vykupyError,
+    },
+    opravy: {
+      celkemKs: opravyToday.reduce((s,o)=>s+(Number(o.qty)||0),0),
+      pocetZaznamu: opravyToday.length,
+      podleDelnika: Object.entries(delnikMap).map(([n,ks])=>({n,ks})).sort((a,b)=>b.ks-a.ks),
+      podleTypu: Object.entries(typMap).map(([n,ks])=>({n,ks})).sort((a,b)=>b.ks-a.ks),
+      chyba: opravyError,
+    },
+  };
+}
+
 function renderPrehled(){
-  const d = DENNI_PREHLED;
-  const kc = n => n.toLocaleString('cs-CZ')+' Kč';
+  const d = computePrehledData();
+  const kc = n => Math.round(n).toLocaleString('cs-CZ')+' Kč';
 
-  const snapFull = `<strong>Kasa, výkup a opravy</strong> — jednorázový snímek ke stavu <strong>${d.snapshotLabel}</strong>, ručně natažený z appek Pokladna / Výkup palet / Evidence oprav (ty spolu zatím nejsou propojené naživo, viz workflow dokument).<br><br>Nakládky, úkoly a plán práce níže už jsou živá sdílená data — vidí je v reálném čase Lukáš i Ondra.`;
-  document.getElementById('prehled-snap-note').setAttribute('onclick', "showInfoSheet('📸 Jednorázový snímek', " + JSON.stringify(snapFull) + ")");
+  const liveFull = `<strong>Kasa, výkup a opravy</strong> se teď načítají naživo přímo z appek Pokladna, Výkup palet a Evidence oprav — stejně jako Nakládky, úkoly a plán práce níže. Vidí je v reálném čase Lukáš i Ondra.`;
+  document.getElementById('prehled-snap-note').setAttribute('onclick', "showInfoSheet('📡 Živá data', " + JSON.stringify(liveFull) + ")");
   document.getElementById('prehled-snap-note').innerHTML =
-    `📸 Kasa/výkup/opravy: jednorázový snímek <span class="snap-note-more">Info ›</span>`;
+    `📡 Kasa/výkup/opravy: živě z appek <span class="snap-note-more">Info ›</span>`;
 
-  document.getElementById('prehled-kasa').innerHTML = `
-    <div class="ov-big" style="color:${d.kasa.oficialniZustatek>=0?'var(--green)':'var(--red)'}">${kc(d.kasa.oficialniZustatek)}</div>
-    <div class="ov-sub">oficiální zůstatek · ukotveno ${d.kasa.ukotvenoDatum}</div>
-    <div class="ov-mini-row">
-      <div class="ov-mini"><div class="ov-mini-lbl">Dnešní příjem</div><div class="ov-mini-val ov-plus">+${kc(d.kasa.dnesPrijem)}</div></div>
-      <div class="ov-mini"><div class="ov-mini-lbl">Dnešní výdaj</div><div class="ov-mini-val ov-minus">−${kc(d.kasa.dnesVydaj)}</div></div>
-    </div>
-    <div class="ov-mini-row">
-      <div class="ov-mini" style="background:#fdf0e8"><div class="ov-mini-lbl" style="color:var(--yellow)">Neoficiální dnes</div><div class="ov-mini-val">+${kc(d.kasa.neoficialniPrijem)} / −${kc(d.kasa.neoficialniVydaj)}</div></div>
-    </div>
-  `;
+  if (d.kasa.oficialniZustatek===null){
+    document.getElementById('prehled-kasa').innerHTML = `
+      <div class="ov-big" style="font-size:20px">Čeká na ukotvení</div>
+      <div class="ov-sub">oficiální zůstatek zatím není ukotvený k reálnému stavu kasy (appka Pokladna)</div>
+      ${d.kasa.chyba?'<div class="ov-flag">⚠ Kasu se nepodařilo načíst živě (výpadek připojení k appce Pokladna).</div>':''}
+    `;
+  } else {
+    document.getElementById('prehled-kasa').innerHTML = `
+      <div class="ov-big" style="color:${d.kasa.oficialniZustatek>=0?'var(--green)':'var(--red)'}">${kc(d.kasa.oficialniZustatek)}</div>
+      <div class="ov-sub">oficiální zůstatek · ukotveno ${d.kasa.ukotvenoDatum}</div>
+      <div class="ov-mini-row">
+        <div class="ov-mini"><div class="ov-mini-lbl">Dnešní příjem</div><div class="ov-mini-val ov-plus">+${kc(d.kasa.dnesPrijem)}</div></div>
+        <div class="ov-mini"><div class="ov-mini-lbl">Dnešní výdaj</div><div class="ov-mini-val ov-minus">−${kc(d.kasa.dnesVydaj)}</div></div>
+      </div>
+      <div class="ov-mini-row">
+        <div class="ov-mini" style="background:#fdf0e8"><div class="ov-mini-lbl" style="color:var(--yellow)">Neoficiální dnes</div><div class="ov-mini-val">+${kc(d.kasa.neoficialniPrijem)} / −${kc(d.kasa.neoficialniVydaj)}</div></div>
+      </div>
+      ${d.kasa.chyba?'<div class="ov-flag">⚠ Kasu se nepodařilo načíst živě (výpadek připojení k appce Pokladna).</div>':''}
+    `;
+  }
 
   document.getElementById('prehled-vykup').innerHTML = `
     <div class="ov-big">${kc(d.vykup.celkemKc)}</div>
     <div class="ov-sub">${d.vykup.pocetZaznamu} výkupy dnes</div>
     <div class="ov-breakdown">
-      ${d.vykup.polozky.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('')}
+      ${d.vykup.polozky.length ? d.vykup.polozky.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('') : '<div class="empty">Dnes zatím žádný výkup.</div>'}
     </div>
+    ${d.vykup.chyba?'<div class="ov-flag">⚠ Výkup se nepodařilo načíst živě (výpadek připojení k appce Výkup palet).</div>':''}
   `;
 
+  const neznamyDelnik = d.opravy.podleDelnika.find(p=>p.n.startsWith('Pracovník #'));
   document.getElementById('prehled-opravy').innerHTML = `
     <div class="ov-big">${d.opravy.celkemKs} ks</div>
     <div class="ov-sub">${d.opravy.pocetZaznamu} záznamů dnes</div>
     <div class="ov-breakdown">
-      ${d.opravy.podleDelnika.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('')}
+      ${d.opravy.podleDelnika.length ? d.opravy.podleDelnika.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('') : '<div class="empty">Dnes zatím žádná oprava.</div>'}
     </div>
     <div class="ov-breakdown" style="margin-top:10px">
       ${d.opravy.podleTypu.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('')}
     </div>
-    <div class="ov-flag">⚠ V datech je pracovník uvedený jen jako "Pracovník 1" (bez jména) — 45 ks dnes. Stojí za kontrolu, jestli je to nový/dočasný pracovník bez nastaveného jména v appce.</div>
+    ${neznamyDelnik?`<div class="ov-flag">⚠ V datech je pracovník uvedený jen jako "${neznamyDelnik.n}" (bez jména) — ${neznamyDelnik.ks} ks dnes.</div>`:''}
+    ${d.opravy.chyba?'<div class="ov-flag">⚠ Opravy se nepodařilo načíst živě (výpadek připojení k appce Evidence oprav).</div>':''}
   `;
 
   document.getElementById('prehled-trideni').innerHTML = `
@@ -881,6 +1042,110 @@ function renderPrehled(){
 
   document.getElementById('fab-wrap').style.display='none';
 }
+
+/* ============ RENDER: PROFITABILITA (jen Lukáš) ============
+   Zisk z výkupů = (prodejní cena/ks − výkupní cena/ks − fixní náklad/ks) × ks,
+   sečteno přes položky výkupů (appka Výkup palet). Fixní náklad je 68 Kč/ks u
+   poškozených typů, jinak 13 Kč/ks — stejná logika jako appka Palety (Rentabilita).
+   Prodejní ceny jsou sdílené a editovatelné jen tady, uložené ve Firestore
+   (projekt vykup-palet, kolekce sell_prices/config) — vyžaduje vlastní pravidlo. */
+function vykupPalletByName(n){ return VYKUP_PALLETS.find(p=>p.n===n) || null; }
+
+function setProfPeriod(p){ profPeriod = p; renderProfitabilita(); }
+
+function profFilterRecords(){
+  const now = new Date();
+  let from = null;
+  if(profPeriod==='today'){ from = new Date(now.getFullYear(),now.getMonth(),now.getDate()); }
+  else if(profPeriod==='week'){ from = mondayOf(now); from.setHours(0,0,0,0); }
+  else if(profPeriod==='month'){ from = new Date(now.getFullYear(),now.getMonth(),1); }
+  return vykupyData.filter(v=>{
+    if(!v.ts) return false;
+    if(!from) return true;
+    return new Date(v.ts) >= from;
+  });
+}
+
+function profCalc(){
+  const records = profFilterRecords();
+  let profit = 0, ksTotal = 0, unknownKs = 0;
+  const perType = {};
+  records.forEach(v=>(v.items||[]).forEach(it=>{
+    const pallet = vykupPalletByName(it.n);
+    const ks = Number(it.ks)||0;
+    ksTotal += ks;
+    if(!pallet){ unknownKs += ks; return; }
+    const isDmg = VYKUP_DAMAGED_IDS.includes(pallet.id);
+    const fixCost = isDmg ? 68 : 13;
+    const sellPrice = Number(sellPrices[pallet.id]) || 0;
+    const purchCost = Number(it.pr)||0;
+    const rowProfit = (sellPrice - purchCost - fixCost) * ks;
+    profit += rowProfit;
+    perType[pallet.id] = perType[pallet.id] || {n:pallet.n, ks:0, profit:0};
+    perType[pallet.id].ks += ks;
+    perType[pallet.id].profit += rowProfit;
+  }));
+  return { profit, ksTotal, unknownKs, records: records.length, perType: Object.values(perType).sort((a,b)=>b.ks-a.ks) };
+}
+
+function renderProfitabilita(){
+  const kc = n => Math.round(n).toLocaleString('cs-CZ')+' Kč';
+
+  document.getElementById('prof-period-chips').innerHTML = `
+    <button class="chip${profPeriod==='today'?' on':''}" onclick="setProfPeriod('today')">Dnes</button>
+    <button class="chip${profPeriod==='week'?' on':''}" onclick="setProfPeriod('week')">Tento týden</button>
+    <button class="chip${profPeriod==='month'?' on':''}" onclick="setProfPeriod('month')">Tento měsíc</button>
+    <button class="chip${profPeriod==='all'?' on':''}" onclick="setProfPeriod('all')">Vše</button>
+  `;
+
+  if(!sellPricesLoaded){
+    document.getElementById('prof-result').innerHTML = `<div class="empty">Načítám ceny…</div>`;
+  } else {
+    const c = profCalc();
+    document.getElementById('prof-result').innerHTML = `
+      <div class="profit-card">
+        <div>
+          <div class="profit-lbl">Čistý zisk</div>
+          <div class="profit-val ${c.profit>=0?'pos':'neg'}">${kc(c.profit)}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#ccc">${c.records} výkupy<br>${c.ksTotal} ks</div>
+      </div>
+      <div class="ov-breakdown">
+        ${c.perType.length? c.perType.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${kc(p.profit)} (${p.ks} ks)</span></div>`).join('') : '<div class="empty">V tomhle období žádný výkup.</div>'}
+      </div>
+      ${c.unknownKs?`<div class="ov-flag">⚠ ${c.unknownKs} ks nešlo přiřadit ke známému typu palety — nezapočítáno do zisku.</div>`:''}
+      ${vykupyError?'<div class="ov-flag">⚠ Výkupy se nepodařilo načíst živě (výpadek připojení k appce Výkup palet).</div>':''}
+    `;
+  }
+
+  let priceNote = '';
+  if(sellPricesError){
+    priceNote = `<div class="ov-flag">⚠ Uložení prodejní ceny se nepovedlo — v projektu vykup-palet chybí Firestore pravidlo pro kolekci <code>sell_prices</code>. Přidej v konzoli Firebase (stejně jako u tridici_protokoly): <code>match /sell_prices/{doc} { allow read, write: if true; }</code></div>`;
+  }
+  document.getElementById('prof-note').innerHTML = `<div style="font-size:12px;color:var(--dim);margin-bottom:8px">Prodejní ceny za kus jsou sdílené a používají se pro výpočet zisku výše. Vidí a upravuje je jen tahle záložka.</div>${priceNote}`;
+
+  document.getElementById('prof-prices').innerHTML = VYKUP_PALLETS.map(p=>{
+    const isDmg = VYKUP_DAMAGED_IDS.includes(p.id);
+    const val = sellPrices[p.id]!=null ? sellPrices[p.id] : '';
+    return `<div class="rent-row">
+      <div class="rent-name">${p.n}${isDmg?' <span style="color:var(--dim);font-weight:400">(poškozená)</span>':''}</div>
+      <input class="rent-inp" type="number" inputmode="decimal" value="${val}" placeholder="0" onchange="saveSellPriceProf('${p.id}',this.value)">
+    </div>`;
+  }).join('');
+}
+
+function saveSellPriceProf(id, val){
+  const n = Number(val)||0;
+  sellPrices[id] = n;
+  setDoc(doc(vpdb,'sell_prices','config'), {[id]: n}, {merge:true}).then(()=>{
+    sellPricesError = false;
+  }).catch(e=>{
+    console.error('saveSellPriceProf', e);
+    sellPricesError = true;
+    renderProfitabilita();
+  });
+}
+
 function switchToNakladka(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.remove('on'));
@@ -1813,6 +2078,7 @@ function renderAll(){
   if(s==='nakladky') renderNakladky();
   if(s==='ukoly') renderUkoly();
   if(s==='kapacita') renderKapacita();
+  if(s==='profitabilita') renderProfitabilita();
 }
 // Role/jméno/viditelnost záložek se nastaví až v nastavRoliPoPrihlaseni() po přihlášení.
 // renderAll() se poprvé zavolá až po načtení dat z Firestore (viz maybeFinishLoading výše) A přihlášení.
@@ -1862,6 +2128,8 @@ window.plSave = plSave;
 window.plClear = plClear;
 window.closeSheet = closeSheet;
 window.showInfoSheet = showInfoSheet;
+window.setProfPeriod = setProfPeriod;
+window.saveSellPriceProf = saveSellPriceProf;
 </script>
 </body>
 </html>
