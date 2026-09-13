@@ -212,6 +212,8 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   </div>
 </div>
 
+<div class="demo-banner" onclick="showInfoSheet('🧪 Pilotní provoz', 'Data (nakládky, úkoly, plán práce, zákazníci) se sdílí naživo mezi všemi, kdo appku mají otevřenou.&lt;br&gt;&lt;br&gt;Přepínač Majitel/Martin nahoře jen simuluje pohled majitele vs. skladníka (žádné heslo) — nejde o skutečné přihlášení.&lt;br&gt;&lt;br&gt;Appka je zatím napůl testovací, pro Lukáše a Ondru — buďte prosím shovívaví k drobným chybám.')">🧪 Pilotní provoz — klepni pro info ›</div>
+
 <!-- PŘEHLED (denní souhrn firmy) -->
 <div class="screen on" id="screen-prehled">
   <div class="sec-lbl">Nakládky dnes</div>
@@ -299,7 +301,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA2E1Cz9u1f6iNX6uxEv_ubrfaoHGscvF8",
@@ -317,6 +319,73 @@ const COL = {
   workplan: collection(fdb,'workplan'),
   zakaznici: collection(fdb,'zakaznici'),
 };
+
+// --- Most na appku Třídicí protokol (samostatný Firebase projekt) ---
+// Když je vykládka určená na třídění, appka sem rovnou založí/aktualizuje odpovídající úkol.
+const tridiciConfig = {
+  apiKey: "AIzaSyB-pBW5Yh3syOvsNfQ4mCHTJlj3M3Lu1Fc",
+  authDomain: "tridici-protokol.firebaseapp.com",
+  projectId: "tridici-protokol",
+  storageBucket: "tridici-protokol.firebasestorage.app",
+  messagingSenderId: "1071564459585",
+  appId: "1:1071564459585:web:4f2fe24756a3f1323540c0"
+};
+const tridiciApp = initializeApp(tridiciConfig, "tridici");
+const tdb = getFirestore(tridiciApp);
+const TRIDICI_WORKER_ID = {radek:'radek', martin:'martin', zavadil:'zavadil', pavel:'pavel'};
+function tridiciUkolId(vykladkaId){ return 'dash_'+vykladkaId; }
+function vykladkaKvalifikujeNaTrideni(d){
+  return d.typ==='vykladka' && (d.ocekavano==='trideni' || (d.material||[]).some(m=>(m.tridirna||0)>0));
+}
+function vykladkaPocetPaletNaTrideni(d){
+  return (d.material||[]).reduce((s,m)=>{
+    if(m.tridirna!=null) return s + (Number(m.tridirna)||0);
+    if(d.ocekavano==='trideni') return s + (Number(m.dlQty)||0);
+    return s;
+  },0);
+}
+function vykladkaFotkyLinks(d){
+  const arr = [d.dlFoto, ...(d.fotoTridirna||[])];
+  return arr.filter(Boolean).map(p => typeof p==='string' ? p : p.url).filter(Boolean);
+}
+// Volá se po každém uložení vykládky. Založí/aktualizuje/smaže navázaný úkol v appce
+// Třídicí protokol podle toho, jestli vykládka aktuálně splňuje podmínku "na třídění".
+// Úkol, který je v Třídicím protokolu už označený jako hotový (zpracovaný), appka nikdy
+// sama neupraví ani nesmaže — reálný výsledek třídění se nesmí tiše přepsat.
+async function syncTridiciUkol(d){
+  const ref = doc(tdb, 'ukoly', tridiciUkolId(d.id));
+  try{
+    const existing = await getDoc(ref);
+    const existingData = existing.exists() ? existing.data() : null;
+    if(existingData && existingData.stav === 'hotovo') return; // už zpracováno, appka do toho nesahá
+
+    if(!vykladkaKvalifikujeNaTrideni(d)){
+      if(existingData) await deleteDoc(ref);
+      return;
+    }
+    await setDoc(ref, {
+      datum: d.datum,
+      zakaznik: d.partner || '(bez názvu)',
+      pocet_palet: vykladkaPocetPaletNaTrideni(d),
+      urceni: 'trideni',
+      pracovnik: (d.prirazeniDelnici||[]).map(name => TRIDICI_WORKER_ID[name.toLowerCase()] || name.toLowerCase()),
+      fotky: vykladkaFotkyLinks(d),
+      stav: 'novy',
+      zalozil: 'dashboard',
+      zdrojDashboardId: d.id,
+      vytvoreno: (existingData && existingData.vytvoreno) || new Date().toISOString()
+    });
+  } catch(e){
+    console.error('syncTridiciUkol', d.id, e);
+  }
+}
+async function deleteTridiciUkolPokudNehotovo(vykladkaId){
+  const ref = doc(tdb, 'ukoly', tridiciUkolId(vykladkaId));
+  try{
+    const existing = await getDoc(ref);
+    if(existing.exists() && existing.data().stav !== 'hotovo') await deleteDoc(ref);
+  } catch(e){ console.error('deleteTridiciUkolPokudNehotovo', vykladkaId, e); }
+}
 function fbSet(colName, id, data){
   setDoc(doc(COL[colName], id), JSON.parse(JSON.stringify(data))).catch(e=>{
     console.error('fbSet', colName, id, e);
@@ -429,14 +498,8 @@ function seedIfEmpty(colName, seedFn, keyFn){
   const rows = seedFn();
   rows.forEach(r => fbSet(colName, keyFn(r), r));
 }
-// Pozn. (13.9.2026): dřív se tu při prázdné kolekci vždycky znovu vložila ukázková
-// data (seedIfEmpty/seedNakladky/seedUkoly/seedZakaznici/seedWorkPlan) — mělo to
-// nahodit appku napoprvé, ale platilo to natrvalo: i po smazání všech záznamů appka
-// při dalším načtení kolekci vyhodnotila jako "první spuštění" a ukázková data tam
-// nasypala znovu. Proto se smazané nakládky/úkoly po resetu appky vracely. Appka teď
-// běží naostro, takže se prázdná kolekce už znovu nezaplňuje — seed funkce zůstávají
-// v kódu nepoužité, jen pro referenci.
 onSnapshot(COL.nakladky, snap => {
+  if(!loaded.nakladky && snap.empty){ seedIfEmpty('nakladky', seedNakladky, r=>r.id); }
   nakladky = snap.docs.map(d=>d.data());
   loaded.nakladky = true;
   document.getElementById('offline-banner').style.display='none';
@@ -444,18 +507,27 @@ onSnapshot(COL.nakladky, snap => {
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
 
 onSnapshot(COL.ukoly, snap => {
+  if(!loaded.ukoly && snap.empty){ seedIfEmpty('ukoly', seedUkoly, r=>r.id); }
   ukoly = snap.docs.map(d=>d.data());
   loaded.ukoly = true;
   maybeFinishLoading(); if(dbReady) renderAll();
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
 
 onSnapshot(COL.zakaznici, snap => {
+  if(!loaded.zakaznici && snap.empty){ seedIfEmpty('zakaznici', seedZakaznici, r=>r.id); }
   zakaznici = snap.docs.map(d=>d.data());
   loaded.zakaznici = true;
   maybeFinishLoading(); if(dbReady) renderAll();
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
 
 onSnapshot(COL.workplan, snap => {
+  if(!loaded.workplan && snap.empty){
+    const seed = seedWorkPlan();
+    Object.entries(seed).forEach(([key, val]) => {
+      const [date, worker] = key.split('|');
+      fbSet('workplan', key, {...val, date, worker});
+    });
+  }
   const wp = {};
   snap.docs.forEach(d=>{ const data=d.data(); wp[workPlanKeyFromDoc(d.id,data)] = {typ:data.typ, vykladkaId:data.vykladkaId, poznamka:data.poznamka}; });
   workPlan = wp;
@@ -1287,12 +1359,14 @@ function nkSave(stav){
   });
 
   fbSet('nakladky', d.id, d);
+  syncTridiciUkol(d);
   closeSheet(); renderNakladky();
   toast(stav==='vyrizene' ? '✓ Označeno jako vyřízeno' : '✓ Uloženo');
 }
 function nkDelete(id){
   nakladky = nakladky.filter(n=>n.id!==id);
   fbDelete('nakladky', id);
+  deleteTridiciUkolPokudNehotovo(id);
   closeSheet(); renderNakladky();
   toast('🗑 Smazáno');
 }
