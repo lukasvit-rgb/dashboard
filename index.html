@@ -33,6 +33,18 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .seg-pill{display:flex;background:var(--bg3);border-radius:20px;padding:2px}
 .seg-pill-btn{padding:6px 11px;background:none;border:none;border-radius:18px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);cursor:pointer}
 .seg-pill-btn.on{background:var(--ink);color:#fff}
+.user-badge{display:flex;align-items:center;gap:8px}
+.user-badge-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+
+/* PŘIHLÁŠENÍ */
+.login-overlay{position:fixed;inset:0;background:var(--bg);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.login-box{width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px}
+.login-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;letter-spacing:5px;text-align:center;margin-bottom:6px}
+.login-box input{font-family:'Barlow',sans-serif;font-size:15px;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);background:#fff;color:var(--ink);width:100%}
+.login-box input:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.login-btn{padding:13px;background:var(--ink);color:#fff;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-err{font-size:12.5px;color:var(--red);font-weight:700;min-height:16px;text-align:center}
 
 /* BOTTOM TAB BAR (nativní app navigace) */
 .tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;background:#ffffff;border-top:1px solid var(--border);z-index:150;padding-bottom:env(safe-area-inset-bottom)}
@@ -205,11 +217,21 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   </div>
   <div class="role-switch">
     <button class="icon-btn" id="zk-btn" onclick="openZakaznikList()" style="display:none" aria-label="Zákazníci">👥</button>
-    <div class="seg-pill">
-      <button class="seg-pill-btn on" id="role-owner" onclick="setRole('owner')">Majitel</button>
-      <button class="seg-pill-btn" id="role-sklad" onclick="setRole('sklad')">Martin</button>
+    <div class="user-badge" id="user-badge" style="display:none">
+      <span class="user-badge-name" id="user-badge-name"></span>
+      <button class="icon-btn" id="logout-btn" onclick="doLogout()" aria-label="Odhlásit" title="Odhlásit">⏻</button>
     </div>
   </div>
+</div>
+
+<div class="login-overlay" id="login-overlay" style="display:none">
+  <div class="login-title">PALETY VÍT</div>
+  <form class="login-box" id="login-form">
+    <input type="email" id="login-email" placeholder="E-mail" autocomplete="username" required>
+    <input type="password" id="login-heslo" placeholder="Heslo" autocomplete="current-password" required>
+    <button type="submit" class="login-btn" id="login-btn">Přihlásit</button>
+    <div class="login-err" id="login-err"></div>
+  </form>
 </div>
 
 <!-- PŘEHLED (denní souhrn firmy) -->
@@ -300,6 +322,35 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ PŘIHLAŠOVÁNÍ ============
+   Skutečné přihlašování (Firebase Auth), stejný projekt (vykup-palet) a stejný
+   vzor jako appky Pokladna a Výkup palet — Lukáš a Ondřej tak nemají pro appky
+   firmy dvoje přihlašovací údaje. Role appky (majitel/skladník) i jméno se
+   odvozují z přihlášeného e-mailu, ne z ručního přepínače (ten byl zrušen —
+   nic nechránil). Pozor: appka teď vyžaduje přihlášení, ale Firestore Rules
+   zůstávají otevřené (`allow read, write: if true`) — to je stejné omezení,
+   jaké má appka Pokladna (viz claude/revize_pokladna.md, bod 8): přihlášení
+   chrání appku samotnou, ne přímý přístup přes Firestore REST API. */
+const authFirebaseConfig = {
+  apiKey: "AIzaSyD60m7hSErvSuOQul3kfAjWPpGfVmyVVuM",
+  authDomain: "vykup-palet.firebaseapp.com",
+  projectId: "vykup-palet",
+  storageBucket: "vykup-palet.firebasestorage.app",
+  messagingSenderId: "264591837143",
+  appId: "1:264591837143:web:5bd414b54a33a3fde26d92"
+};
+const authApp = initializeApp(authFirebaseConfig, "auth");
+const auth = getAuth(authApp);
+
+// Role appky: 'owner' = majitel (Lukáš, Ondřej) vidí vždy úplně stejně;
+// 'sklad' = skladník Martin, omezená appka (viz níže).
+const PERSON_BY_EMAIL = {
+  'lukas.vit@v-pallets.cz':  { name:'Lukáš',  role:'owner', jeLukas:true },
+  'ondrej.vit@paletyvit.cz': { name:'Ondřej', role:'owner', jeLukas:false },
+  'bortlikmartin2@seznam.cz':{ name:'Martin', role:'sklad', jeLukas:false },
+};
 
 const firebaseConfig = {
   apiKey: "AIzaSyA2E1Cz9u1f6iNX6uxEv_ubrfaoHGscvF8",
@@ -394,8 +445,9 @@ const DENNI_PREHLED = {
   },
 };
 
-let role = localStorage.getItem('dash_role') || 'owner'; // 'owner' | 'sklad'
-let person = localStorage.getItem('dash_person') || 'Lukáš'; // 'Lukáš' | 'Ondřej' — jen pro roli owner, kvůli "Osobní úkoly" v Přehledu
+let role = 'sklad'; // 'owner' | 'sklad' — bezpečný výchozí stav, dokud appka nezná přihlášeného uživatele (viz nastavRoliPoPrihlaseni)
+let person = 'Lukáš'; // 'Lukáš' | 'Ondřej' — jen pro roli owner, kvůli "Osobní úkoly" v Přehledu
+let jeLukas = false; // true jen pro lukas.vit@v-pallets.cz — řídí viditelnost záložky Profitabilita
 let nakladky = [];
 let ukoly   = [];
 let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
@@ -639,14 +691,61 @@ function stripPendingAndDataUrl(p){
   return p;
 }
 
-/* ============ ROLE ============ */
-function setRole(r){
-  role=r; localStorage.setItem('dash_role',r);
-  document.getElementById('role-owner').classList.toggle('on',r==='owner');
-  document.getElementById('role-sklad').classList.toggle('on',r==='sklad');
-  document.getElementById('zk-btn').style.display = (r==='owner') ? '' : 'none';
-  renderAll();
+/* ============ PŘIHLÁŠENÍ / ROLE ============
+   Role appky (majitel/skladník) a jméno se nastaví až tady, po úspěšném
+   přihlášení — viz onAuthStateChanged níže. Ruční přepínač Majitel/Martin byl
+   zrušený (nic nechránil, kdokoli si mohl appku přepnout na Majitele). */
+function nastavRoliPoPrihlaseni(osoba){
+  role = osoba.role; person = osoba.name; jeLukas = !!osoba.jeLukas;
+  document.getElementById('user-badge').style.display = '';
+  document.getElementById('user-badge-name').textContent = osoba.name;
+  document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
+  // Skladník nevidí souhrnnou záložku Přehled (finanční čísla firmy) — jen svoje úkoly a nakládky.
+  const tabPrehled = document.getElementById('tab-prehled');
+  tabPrehled.style.display = (role==='owner') ? '' : 'none';
+  if (role==='sklad' && activeScreen()==='prehled'){
+    switchTab('nakladky', document.getElementById('tab-nakladky'));
+  }
+  if (dbReady) renderAll();
 }
+
+function doLogout(){
+  signOut(auth);
+}
+
+document.getElementById('login-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const heslo = document.getElementById('login-heslo').value;
+  const errEl = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  errEl.textContent = ''; btn.disabled = true; btn.textContent = 'Přihlašuji…';
+  signInWithEmailAndPassword(auth, email, heslo).catch(function(err){
+    console.error('login', err);
+    errEl.textContent = (err && (err.code==='auth/invalid-credential' || err.code==='auth/wrong-password' || err.code==='auth/user-not-found'))
+      ? 'Nesprávný e-mail nebo heslo.' : 'Přihlášení se nepovedlo, zkus to znovu.';
+  }).finally(function(){
+    btn.disabled = false; btn.textContent = 'Přihlásit';
+  });
+});
+
+onAuthStateChanged(auth, function(user){
+  const loginOverlay = document.getElementById('login-overlay');
+  if (!user){
+    loginOverlay.style.display = 'flex';
+    document.getElementById('user-badge').style.display = 'none';
+    return;
+  }
+  const osoba = PERSON_BY_EMAIL[(user.email||'').toLowerCase()];
+  if (!osoba){
+    document.getElementById('login-err').textContent = 'Tenhle účet nemá v appce přiřazenou roli — ozvi se Lukášovi.';
+    loginOverlay.style.display = 'flex';
+    signOut(auth);
+    return;
+  }
+  loginOverlay.style.display = 'none';
+  nastavRoliPoPrihlaseni(osoba);
+});
 
 function setPerson(p){
   person = p; localStorage.setItem('dash_person', p);
@@ -1350,7 +1449,7 @@ function renderZakaznikSheet(){
     <div style="height:6px"></div>
     <button class="btn btn-primary" onclick="zkSave()">✓ Uložit zákazníka</button>
     <button class="btn" onclick="renderZakaznikListSheet()">← Zpět na seznam</button>
-    ${!d._isNew ? `<button class="btn btn-danger" onclick="zkDelete('${d.id}')">Smazat zákazníka</button>` : ''}
+    ${(!d._isNew && role==='owner') ? `<button class="btn btn-danger" onclick="zkDelete('${d.id}')">Smazat zákazníka</button>` : ''}
   `;
 }
 function zkToggleMat(p){
@@ -1496,7 +1595,7 @@ function renderUkolSheet(){
     ${d.stav==='nove' ? `<button class="btn btn-primary" onclick="ukSave('vyrizene')">✓ Uložit a označit Vyřízeno</button>`
                        : `<button class="btn" onclick="ukSave('nove')">↩ Vrátit na Nové</button>`}
     <button class="btn ${d.stav==='nove'?'':'btn-primary'}" onclick="ukSave('${d.stav}')">${d.stav==='nove'?'Uložit':'Uložit'}</button>
-    ${!isNew ? `<button class="btn btn-danger" onclick="ukDelete('${d.id}')">Smazat úkol</button>` : ''}
+    ${(!isNew && role==='owner') ? `<button class="btn btn-danger" onclick="ukDelete('${d.id}')">Smazat úkol</button>` : ''}
   `;
 }
 function renderComments(list){
@@ -1700,13 +1799,11 @@ function renderAll(){
   if(s==='ukoly') renderUkoly();
   if(s==='kapacita') renderKapacita();
 }
-document.getElementById('role-owner').classList.toggle('on', role==='owner');
-document.getElementById('role-sklad').classList.toggle('on', role==='sklad');
-document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
-// renderAll() se poprvé zavolá až po načtení dat z Firestore (viz maybeFinishLoading výše).
+// Role/jméno/viditelnost záložek se nastaví až v nastavRoliPoPrihlaseni() po přihlášení.
+// renderAll() se poprvé zavolá až po načtení dat z Firestore (viz maybeFinishLoading výše) A přihlášení.
 
 // Funkce volané z onclick atributů v HTML musí být na window, protože jsou v <script type="module">.
-window.setRole = setRole;
+window.doLogout = doLogout;
 window.setPerson = setPerson;
 window.switchTab = switchTab;
 window.switchToNakladka = switchToNakladka;
