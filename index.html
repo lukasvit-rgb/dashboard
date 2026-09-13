@@ -231,6 +231,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
     <input type="password" id="login-heslo" placeholder="Heslo" autocomplete="current-password" required>
     <button type="submit" class="login-btn" id="login-btn">Přihlásit</button>
     <div class="login-err" id="login-err"></div>
+    <button type="button" id="forgot-btn" style="background:none;border:none;color:var(--dim);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:4px">Zapomenuté heslo</button>
   </form>
 </div>
 
@@ -322,7 +323,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 /* ============ PŘIHLAŠOVÁNÍ ============
    Skutečné přihlašování (Firebase Auth), stejný projekt (vykup-palet) a stejný
@@ -726,6 +727,20 @@ document.getElementById('login-form').addEventListener('submit', function(e){
       ? 'Nesprávný e-mail nebo heslo.' : 'Přihlášení se nepovedlo, zkus to znovu.';
   }).finally(function(){
     btn.disabled = false; btn.textContent = 'Přihlásit';
+  });
+});
+
+document.getElementById('forgot-btn').addEventListener('click', function(){
+  const email = document.getElementById('login-email').value.trim();
+  const errEl = document.getElementById('login-err');
+  if (!email){ errEl.textContent = 'Napiš nejdřív svůj e-mail nahoře.'; errEl.style.color = 'var(--red)'; return; }
+  sendPasswordResetEmail(auth, email).then(function(){
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = 'Odkaz na nastavení hesla poslán na ' + email + '.';
+  }).catch(function(err){
+    console.error('reset', err);
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = 'Nepovedlo se poslat e-mail — zkontroluj, že je adresa správně.';
   });
 });
 
