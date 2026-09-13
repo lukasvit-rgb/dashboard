@@ -337,12 +337,13 @@ function tridiciUkolId(vykladkaId){ return 'dash_'+vykladkaId; }
 function vykladkaKvalifikujeNaTrideni(d){
   return d.typ==='vykladka' && (d.ocekavano==='trideni' || (d.material||[]).some(m=>(m.tridirna||0)>0));
 }
+// Počet palet pro úkol v Třídicím protokolu je jen to, co skladník reálně potvrdil
+// (rozpad podle střediska po vyložení) — nikdy odhad podle DL. Dokud skladník
+// rozpad nevyplní, je to null a appka Třídicí protokol to ukáže jako "čeká na potvrzení".
 function vykladkaPocetPaletNaTrideni(d){
-  return (d.material||[]).reduce((s,m)=>{
-    if(m.tridirna!=null) return s + (Number(m.tridirna)||0);
-    if(d.ocekavano==='trideni') return s + (Number(m.dlQty)||0);
-    return s;
-  },0);
+  const hasConfirmed = (d.material||[]).some(m => m.tridirna!=null);
+  if(!hasConfirmed) return null;
+  return (d.material||[]).reduce((s,m) => s + (m.tridirna!=null ? (Number(m.tridirna)||0) : 0), 0);
 }
 function vykladkaFotkyLinks(d){
   const arr = [d.dlFoto, ...(d.fotoTridirna||[])];
