@@ -1228,7 +1228,7 @@ function setNakFilter(v){ nakFilter=v; renderNakladky(); }
 /* ============ SHEET: NAKLÁDKA / VYKLÁDKA ============ */
 function openNakladka(id){
   const rec = id ? nakladky.find(n=>n.id===id) : null;
-  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: role==='owner'?'Lukáš':'Martin', ts:Date.now(), _isNew:!rec};
+  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: person, ts:Date.now(), _isNew:!rec};
   window._nkData = data;
   window._nkAddingCustomer = false;
   window._nkNewCustName = '';
@@ -1401,7 +1401,7 @@ function renderNakladkaSheet(){
     <div class="sheet-handle"></div>
     <button class="close-x" onclick="closeSheet()">✕</button>
     <div class="sheet-title">${isNew?'Nová nakládka / vykládka':(data.typ==='vykladka'?'Vykládka':'Nakládka')+' — '+data.partner}</div>
-    <div class="sheet-sub">${isNew?'':'Založil '+data.zalozil}</div>
+    <div class="sheet-sub">${isNew?'':'Založil '+data.zalozil+(data.provedl?' · Nakládal/vykládal '+data.provedl:'')}</div>
 
     <div class="field-lbl">Typ</div>
     <div class="seg">
@@ -1639,6 +1639,7 @@ function nkSave(stav){
 
   d.stav = stav;
   delete d._isNew;
+  d.provedl = person; // kdo fyzicky nakládal/vykládal — vždy přepsáno na aktuálně přihlášeného, bez ručního zadávání
   const idx = nakladky.findIndex(n=>n.id===d.id);
   if(idx>=0) nakladky[idx]=d; else nakladky.unshift(d);
 
