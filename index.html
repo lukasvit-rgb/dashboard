@@ -230,7 +230,6 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   </div>
   <div class="role-switch">
     <button class="icon-btn" id="zk-btn" onclick="openZakaznikList()" style="display:none" aria-label="Zákazníci">👥</button>
-    <button class="icon-btn" id="sb-btn" onclick="openSablonyList()" style="display:none" aria-label="Pravidelné úkoly">🔁</button>
     <div class="user-badge" id="user-badge" style="display:none">
       <span class="user-badge-name" id="user-badge-name"></span>
       <button class="icon-btn" id="logout-btn" onclick="doLogout()" aria-label="Odhlásit" title="Odhlásit">⏻</button>
@@ -824,7 +823,6 @@ function nastavRoliPoPrihlaseni(osoba){
   document.getElementById('user-badge').style.display = '';
   document.getElementById('user-badge-name').textContent = osoba.name;
   document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
-  document.getElementById('sb-btn').style.display = (role==='owner') ? '' : 'none';
   // Skladník nevidí souhrnnou záložku Přehled (finanční čísla firmy) — jen svoje úkoly a nakládky.
   const tabPrehled = document.getElementById('tab-prehled');
   tabPrehled.style.display = (role==='owner') ? '' : 'none';
@@ -1910,7 +1908,8 @@ function renderUkoly(){
   document.getElementById('ukol-chips').innerHTML = `
     <button class="chip${ukolFilter==='moje'?' on':''}" onclick="setUkolFilter('moje')">${role==='sklad'?'Moje úkoly':'Vše'}</button>
     <button class="chip${ukolFilter==='po_terminu'?' on':''}" onclick="setUkolFilter('po_terminu')">Po termínu</button>
-    <button class="chip${ukolFilter==='vyrizene'?' on':''}" onclick="setUkolFilter('vyrizene')">Vyřízené</button>`;
+    <button class="chip${ukolFilter==='vyrizene'?' on':''}" onclick="setUkolFilter('vyrizene')">Vyřízené</button>
+    ${role==='owner' ? `<button class="chip" onclick="openSablonyList()">🔁 Pravidelné úkoly</button>` : ''}`;
 
   let list = [...ukoly];
   if(role==='sklad'){
