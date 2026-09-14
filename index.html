@@ -970,10 +970,12 @@ function renderPrehled(){
   document.getElementById('prehled-opravy').innerHTML = `
     <div class="ov-big">${d.opravy.celkemKs} ks</div>
     <div class="ov-sub">${d.opravy.pocetZaznamu} záznamů dnes</div>
+    <div class="ov-day-hdr">Pracovníci</div>
     <div class="ov-breakdown">
       ${d.opravy.podleDelnika.length ? d.opravy.podleDelnika.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('') : '<div class="empty">Dnes zatím žádná oprava.</div>'}
     </div>
-    <div class="ov-breakdown" style="margin-top:10px">
+    <div class="ov-day-hdr">Typy palet</div>
+    <div class="ov-breakdown">
       ${d.opravy.podleTypu.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('')}
     </div>
     ${neznamyDelnik?`<div class="ov-flag">⚠ V datech je pracovník uvedený jen jako "${neznamyDelnik.n}" (bez jména) — ${neznamyDelnik.ks} ks dnes.</div>`:''}
