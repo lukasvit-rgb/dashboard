@@ -90,6 +90,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .pill-new{background:#e8f0fa;color:var(--blue)}
 .pill-done{background:#e5f5ec;color:var(--green)}
 .pill-late{background:#fbe9e9;color:var(--red)}
+.pill-recurring{background:#eef2e6;color:#5c7a3a}
 .empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:14px}
 
 /* CHIPS */
@@ -229,6 +230,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   </div>
   <div class="role-switch">
     <button class="icon-btn" id="zk-btn" onclick="openZakaznikList()" style="display:none" aria-label="Zákazníci">👥</button>
+    <button class="icon-btn" id="sb-btn" onclick="openSablonyList()" style="display:none" aria-label="Pravidelné úkoly">🔁</button>
     <div class="user-badge" id="user-badge" style="display:none">
       <span class="user-badge-name" id="user-badge-name"></span>
       <button class="icon-btn" id="logout-btn" onclick="doLogout()" aria-label="Odhlásit" title="Odhlásit">⏻</button>
@@ -408,6 +410,7 @@ const COL = {
   ukoly: collection(fdb,'ukoly'),
   workplan: collection(fdb,'workplan'),
   zakaznici: collection(fdb,'zakaznici'),
+  ukoly_sablony: collection(fdb,'ukoly_sablony'),
 };
 function fbSet(colName, id, data){
   setDoc(doc(COL[colName], id), JSON.parse(JSON.stringify(data))).catch(e=>{
@@ -479,6 +482,7 @@ let nakladky = [];
 let ukoly   = [];
 let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
 let zakaznici = []; // {id, nazev, materialy:[typ,...]}
+let sablony = []; // {id, nazev, popis, resitel, priorita, frekvence:'tydne'|'mesicne', den, aktivni, zadavatel, ts}
 
 // Živá data Kasa/Výkup/Opravy (jiné Firebase projekty, viz vpdb/evdb výše) a
 // sdílené prodejní ceny pro Profitabilitu — mimo dbReady gate, appka na ně nečeká.
@@ -507,7 +511,7 @@ let planSelDay = todayStr();
    dokument, takže úpravy různých záznamů různými lidmi ve stejnou chvíli se
    nepřepisují — poslední zápis vyhrává jen v rámci JEDNOHO záznamu. */
 let dbReady = false;
-const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false};
+const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false};
 function workPlanKeyFromDoc(id, data){ return (data.date||'')+'|'+(data.worker||''); }
 
 function maybeFinishLoading(){
@@ -545,6 +549,12 @@ onSnapshot(COL.ukoly, snap => {
 onSnapshot(COL.zakaznici, snap => {
   zakaznici = snap.docs.map(d=>d.data());
   loaded.zakaznici = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.ukoly_sablony, snap => {
+  sablony = snap.docs.map(d=>d.data());
+  loaded.sablony = true;
   maybeFinishLoading(); if(dbReady) renderAll();
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
 
@@ -673,6 +683,44 @@ function showInfoSheet(title, html){
 }
 function isOverdue(u){ return u.stav!=='vyrizene' && u.termin < todayStr(); }
 function uid(){return Date.now()+'-'+Math.random().toString(36).substr(2,5);}
+
+/* ============ OPAKUJÍCÍ SE ÚKOLY (šablony → automaticky generované záznamy v "ukoly") ============
+   Šablona popisuje pravidelnost (týdně v konkrétní den / měsíčně v konkrétní den).
+   Appka při každém načtení dat zkontroluje, jestli pro aktuální období (týden/měsíc)
+   už existuje vygenerovaný úkol z dané šablony — pokud ne, vytvoří ho. ID vygenerovaného
+   úkolu je odvozené (šablonaId+období), takže i když appku mají otevřenou dva lidi
+   najednou, oba se pokusí zapsat stejný dokument, ne dva duplicitní záznamy. */
+const DEN_TYDNE_NAZEV = ['','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota','Neděle']; // index 1-7 (ISO, 1=Po)
+function sablonaObdobi(s, d){
+  if(s.frekvence==='mesicne') return d.getFullYear()+'-'+pad2(d.getMonth()+1);
+  return dateToStr(mondayOf(d)); // týdně: datum pondělí toho týdne = klíč období
+}
+function sablonaTermin(s, d){
+  if(s.frekvence==='mesicne'){
+    const rok=d.getFullYear(), mesic=d.getMonth();
+    const posledniDen = new Date(rok, mesic+1, 0).getDate();
+    return dateToStr(new Date(rok, mesic, Math.min(s.den||1, posledniDen)));
+  }
+  return dateToStr(addDays(mondayOf(d), (s.den||5)-1));
+}
+function generujOpakujiciUkoly(){
+  if(!loaded.ukoly || !loaded.sablony) return;
+  const dnes = new Date();
+  sablony.filter(s=>s.aktivni!==false).forEach(s=>{
+    const obdobi = sablonaObdobi(s, dnes);
+    if(ukoly.some(u=>u.sablonaId===s.id && u.obdobi===obdobi)) return;
+    const novy = {
+      id: s.id+'__'+obdobi,
+      nazev: s.nazev, popis: s.popis||'',
+      zadavatel: s.zadavatel||'Systém', resitel: s.resitel,
+      termin: sablonaTermin(s, dnes), priorita: s.priorita||'stredni',
+      stav:'nove', komentare:[], foto:null, ts:Date.now(),
+      sablonaId: s.id, obdobi,
+    };
+    ukoly.unshift(novy);
+    fbSet('ukoly', novy.id, novy);
+  });
+}
 function workerColor(name){const w=WORKERS.find(w=>w.name===name); return w?w.color:'#999';}
 function docSizeOk(obj, limitBytes){
   limitBytes = limitBytes || 900000; // bezpečná rezerva pod 1 MiB limitem Firestore dokumentu
@@ -776,6 +824,7 @@ function nastavRoliPoPrihlaseni(osoba){
   document.getElementById('user-badge').style.display = '';
   document.getElementById('user-badge-name').textContent = osoba.name;
   document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
+  document.getElementById('sb-btn').style.display = (role==='owner') ? '' : 'none';
   // Skladník nevidí souhrnnou záložku Přehled (finanční čísla firmy) — jen svoje úkoly a nakládky.
   const tabPrehled = document.getElementById('tab-prehled');
   tabPrehled.style.display = (role==='owner') ? '' : 'none';
@@ -1035,7 +1084,7 @@ function renderPrehled(){
       return `<div class="item" style="margin-bottom:6px" onclick="openUkol('${u.id}')">
         <div class="item-dot" style="background:${late?'var(--red)':'var(--blue)'}"></div>
         <div class="item-body">
-          <div class="item-title">${escapeHtml(u.nazev)} ${late?'<span class="pill pill-late">Po termínu</span>':''}</div>
+          <div class="item-title">${escapeHtml(u.nazev)} ${u.sablonaId?'<span class="pill pill-recurring">🔁 opakuje se</span>':''} ${late?'<span class="pill pill-late">Po termínu</span>':''}</div>
           <div class="item-meta">od ${u.zadavatel} · termín ${fmtDate(u.termin)}${u.komentare.length?' · 💬 '+u.komentare.length:''}</div>
         </div>
       </div>`;
@@ -1734,6 +1783,120 @@ function zkDelete(id){
   renderZakaznikListSheet();
 }
 
+/* ============ SHEET: PRAVIDELNÉ ÚKOLY (šablony) ============ */
+function openSablonyList(){
+  renderSablonyListSheet();
+  openSheet();
+}
+function renderSablonyListSheet(){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">Pravidelné úkoly</div>
+    <div class="sheet-sub">Šablony, ze kterých appka sama každý týden/měsíc vytvoří nový úkol v Úkolech. Vypnutá šablona přestane generovat nové, historie zůstane.</div>
+    <div style="height:6px"></div>
+    <div id="sb-list"></div>
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="openSablona(null)">+ Přidat pravidelný úkol</button>
+  `;
+  const el = document.getElementById('sb-list');
+  if(!sablony.length){ el.innerHTML = '<div class="empty">Zatím žádné pravidelné úkoly.</div>'; return; }
+  el.innerHTML = [...sablony].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(s=>{
+    const kdy = s.frekvence==='mesicne' ? (s.den||1)+'. den v měsíci' : 'každé '+(DEN_TYDNE_NAZEV[s.den||5]);
+    return `<div class="item" onclick="openSablona('${s.id}')">
+      <div class="item-dot" style="background:${s.aktivni===false?'var(--muted)':'var(--green)'}"></div>
+      <div class="item-body">
+        <div class="item-title">${escapeHtml(s.nazev)} ${s.aktivni===false?'<span class="pill" style="background:var(--bg3);color:var(--dim)">Vypnuto</span>':''}</div>
+        <div class="item-meta">${s.resitel} · ${kdy}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openSablona(id){
+  const rec = id ? sablony.find(s=>s.id===id) : null;
+  window._sbData = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), nazev:'', popis:'', resitel:'Lukáš', priorita:'stredni', frekvence:'tydne', den:5, aktivni:true, zadavatel:person, ts:Date.now(), _isNew:true};
+  renderSablonaSheet();
+}
+function renderSablonaSheet(){
+  const d = window._sbData;
+  const resitelOptions = ['Lukáš','Ondřej','Martin'];
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${d._isNew?'Nový pravidelný úkol':d.nazev}</div>
+
+    <div class="field-lbl">Název</div>
+    <input class="finp" id="sb-nazev" value="${escapeAttr(d.nazev)}" placeholder="Co se má pravidelně dělat" oninput="window._sbData.nazev=this.value">
+
+    <div class="field-lbl">Popis</div>
+    <textarea class="ftxt" id="sb-popis" placeholder="Detaily (nepovinné)" oninput="window._sbData.popis=this.value">${escapeHtml(d.popis||'')}</textarea>
+
+    <div class="field-lbl">Řešitel</div>
+    <select class="fsel" id="sb-resitel" onchange="window._sbData.resitel=this.value">${resitelOptions.map(r=>`<option ${r===d.resitel?'selected':''}>${r}</option>`).join('')}</select>
+
+    <div class="field-lbl">Opakování</div>
+    <div class="seg">
+      <div class="seg-btn ${d.frekvence==='tydne'?'on':''}" onclick="sbSetFrekvence('tydne')">Týdně</div>
+      <div class="seg-btn ${d.frekvence==='mesicne'?'on':''}" onclick="sbSetFrekvence('mesicne')">Měsíčně</div>
+    </div>
+
+    ${d.frekvence==='tydne' ? `
+    <div class="field-lbl">V který den</div>
+    <select class="fsel" id="sb-den" onchange="window._sbData.den=Number(this.value)">
+      ${DEN_TYDNE_NAZEV.map((n,i)=>i===0?'':`<option value="${i}" ${d.den===i?'selected':''}>${n}</option>`).join('')}
+    </select>
+    ` : `
+    <div class="field-lbl">Který den v měsíci</div>
+    <input class="finp" type="number" id="sb-den" min="1" max="31" value="${d.den||1}" oninput="window._sbData.den=Number(this.value)">
+    <div class="hint" style="margin:-2px 0 10px">Pokud má měsíc míň dní, appka použije poslední den v měsíci.</div>
+    `}
+
+    <div class="field-lbl">Priorita</div>
+    <div class="seg">
+      <div class="seg-btn ${d.priorita==='nizka'?'on':''}" onclick="window._sbData.priorita='nizka'; renderSablonaSheet();">Nízká</div>
+      <div class="seg-btn ${d.priorita==='stredni'?'on':''}" onclick="window._sbData.priorita='stredni'; renderSablonaSheet();">Střední</div>
+      <div class="seg-btn ${d.priorita==='vysoka'?'on':''}" onclick="window._sbData.priorita='vysoka'; renderSablonaSheet();">Vysoká</div>
+    </div>
+
+    ${!d._isNew ? `
+    <div class="field-lbl">Stav</div>
+    <div class="seg">
+      <div class="seg-btn ${d.aktivni!==false?'on':''}" onclick="window._sbData.aktivni=true; renderSablonaSheet();">Aktivní</div>
+      <div class="seg-btn ${d.aktivni===false?'on':''}" onclick="window._sbData.aktivni=false; renderSablonaSheet();">Vypnuto</div>
+    </div>
+    <div class="hint" style="margin:-2px 0 10px">Vypnutím appka přestane zakládat nové úkoly z téhle šablony. Už vygenerované úkoly a jejich historie zůstanou.</div>
+    ` : ''}
+
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="sbSave()">✓ Uložit pravidelný úkol</button>
+    <button class="btn" onclick="renderSablonyListSheet()">← Zpět na seznam</button>
+    ${!d._isNew ? `<button class="btn btn-danger" onclick="sbDelete('${d.id}')">Smazat pravidelný úkol</button>` : ''}
+  `;
+}
+function sbSetFrekvence(f){
+  window._sbData.frekvence = f;
+  window._sbData.den = f==='tydne' ? 5 : 1;
+  renderSablonaSheet();
+}
+function sbSave(){
+  const d = window._sbData;
+  if(!d.nazev.trim()){ toast('⚠ Zadej název pravidelného úkolu'); return; }
+  delete d._isNew;
+  const idx = sablony.findIndex(s=>s.id===d.id);
+  if(idx>=0) sablony[idx]=d; else sablony.push(d);
+  fbSet('ukoly_sablony', d.id, d);
+  toast('✓ Pravidelný úkol uložen');
+  renderSablonyListSheet();
+}
+function sbDelete(id){
+  sablony = sablony.filter(s=>s.id!==id);
+  fbDelete('ukoly_sablony', id);
+  toast('🗑 Pravidelný úkol smazán (historie úkolů zůstává)');
+  renderSablonyListSheet();
+}
+
 /* ============ RENDER: ÚKOLY ============ */
 function renderUkoly(){
   const total = ukoly.length;
@@ -1767,7 +1930,7 @@ function renderUkoly(){
       return `<div class="item" onclick="openUkol('${u.id}')">
         <div class="item-dot" style="background:${late?'var(--red)':(u.stav==='vyrizene'?'var(--green)':'var(--blue)')}"></div>
         <div class="item-body">
-          <div class="item-title">${escapeHtml(u.nazev)} ${late?'<span class="pill pill-late">Po termínu</span>':(u.stav==='vyrizene'?'<span class="pill pill-done">Vyřízeno</span>':'')}</div>
+          <div class="item-title">${escapeHtml(u.nazev)} ${u.sablonaId?'<span class="pill pill-recurring">🔁 opakuje se</span>':''} ${late?'<span class="pill pill-late">Po termínu</span>':(u.stav==='vyrizene'?'<span class="pill pill-done">Vyřízeno</span>':'')}</div>
           <div class="item-meta">${u.zadavatel} → ${u.resitel} · termín ${fmtDate(u.termin)} ${u.komentare.length?`· 💬 ${u.komentare.length}`:''}</div>
         </div>
       </div>`;
@@ -1807,7 +1970,7 @@ function renderUkolSheet(){
     <div class="sheet-handle"></div>
     <button class="close-x" onclick="closeSheet()">✕</button>
     <div class="sheet-title">${isNew?'Nový úkol':escapeHtml(d.nazev)}</div>
-    <div class="sheet-sub">${isNew?'':'Zadal '+d.zadavatel+(isOverdue(d)?' · <span style="color:var(--red);font-weight:700">po termínu</span>':'')}</div>
+    <div class="sheet-sub">${isNew?'':'Zadal '+d.zadavatel+(isOverdue(d)?' · <span style="color:var(--red);font-weight:700">po termínu</span>':'')}${d.sablonaId?' · 🔁 opakující se úkol (nastavení v Pravidelných úkolech)':''}</div>
 
     <div class="field-lbl">Název</div>
     <input class="finp" id="uk-nazev" value="${escapeAttr(d.nazev)}" placeholder="Co je potřeba udělat">
@@ -2049,6 +2212,7 @@ function escapeAttr(s){ return escapeHtml(s); }
 
 /* ============ INIT ============ */
 function renderAll(){
+  generujOpakujiciUkoly();
   const s = activeScreen();
   if(s==='prehled') renderPrehled();
   if(s==='nakladky') renderNakladky();
@@ -2089,6 +2253,13 @@ window.zkToggleMat = zkToggleMat;
 window.zkSave = zkSave;
 window.zkDelete = zkDelete;
 window.renderZakaznikListSheet = renderZakaznikListSheet;
+window.openSablonyList = openSablonyList;
+window.openSablona = openSablona;
+window.renderSablonyListSheet = renderSablonyListSheet;
+window.renderSablonaSheet = renderSablonaSheet;
+window.sbSetFrekvence = sbSetFrekvence;
+window.sbSave = sbSave;
+window.sbDelete = sbDelete;
 window.setUkolFilter = setUkolFilter;
 window.openUkol = openUkol;
 window.ukSetPrio = ukSetPrio;
