@@ -124,8 +124,9 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .seg{display:flex;gap:6px;margin-bottom:4px}
 .seg-btn{flex:1;padding:10px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);cursor:pointer;text-align:center}
 .seg-btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-.material-row{display:grid;grid-template-columns:1.3fr .8fr .8fr;gap:6px;align-items:center;margin-bottom:6px}
+.material-row{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;gap:6px;align-items:center;margin-bottom:6px}
 .material-row select,.material-row input{padding:8px;font-size:13px}
+.mat-row-del{width:32px;height:32px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);color:var(--red);font-size:15px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0}
 .stredisko-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .stredisko-cell{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
 .stredisko-cell .lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
@@ -1579,6 +1580,7 @@ function renderMaterialRows(){
       </select>
       <input type="number" inputmode="numeric" placeholder="${d.typ==='vykladka'?'dle DL':'k naložení'}" value="${m.dlQty??''}" onchange="nkMatField(${i},'dlQty',this.value)" ${canEditPlan?'':'disabled'}>
       <input type="number" inputmode="numeric" placeholder="${d.typ==='vykladka'?'reálně':'naloženo'}" value="${m.realQty??''}" oninput="nkMatField(${i},'realQty',this.value)">
+      ${canEditPlan?`<button type="button" class="mat-row-del" onclick="nkRemoveMaterialRow(${i})" title="Smazat typ palety">✕</button>`:''}
     </div>
     ${(d.typ==='vykladka') ? `
     <div class="stredisko-grid" style="margin-bottom:10px">
@@ -1596,6 +1598,11 @@ function nkMatField(i,field,val){
 function nkAddMaterialRow(){
   window._nkData.material.push({typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null});
   renderMaterialRows();
+}
+function nkRemoveMaterialRow(i){
+  window._nkData.material.splice(i,1);
+  renderMaterialRows();
+  nkRefreshDynamic();
 }
 function nkPhoto(ev,field){
   const file = ev.target.files[0];
@@ -2106,6 +2113,7 @@ window.nkToggleAssign = nkToggleAssign;
 window.nkRefreshDynamic = nkRefreshDynamic;
 window.nkMatField = nkMatField;
 window.nkAddMaterialRow = nkAddMaterialRow;
+window.nkRemoveMaterialRow = nkRemoveMaterialRow;
 window.nkPhoto = nkPhoto;
 window.nkSave = nkSave;
 window.nkDelete = nkDelete;
