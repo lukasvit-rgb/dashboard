@@ -475,7 +475,8 @@ const VYKUP_DAMAGED_IDS = ['eur_ac','eur_bc','std15c','std10c','std05c','x100c',
 // a nové Firebase instance vpdb/evdb výše.
 
 let role = 'sklad'; // 'owner' | 'sklad' — bezpečný výchozí stav, dokud appka nezná přihlášeného uživatele (viz nastavRoliPoPrihlaseni)
-let person = 'Lukáš'; // 'Lukáš' | 'Ondřej' — jen pro roli owner, kvůli "Osobní úkoly" v Přehledu
+let person = 'Lukáš'; // skutečná identita aktuálně přihlášeného — používá se pro Založil/provedl/zadavatel, NIKDY neměnit přepínačem zobrazení
+let osobniView = null; // null = zobrazit úkoly osoby z 'person'; jinak ruční přepnutí v sekci "Osobní úkoly" (jen pro roli owner) — pouze zobrazení, neovlivňuje zápis dat
 let jeLukas = false; // true jen pro lukas.vit@v-pallets.cz — řídí viditelnost záložky Profitabilita
 let nakladky = [];
 let ukoly   = [];
@@ -820,6 +821,7 @@ function stripPendingAndDataUrl(p){
    zrušený (nic nechránil, kdokoli si mohl appku přepnout na Majitele). */
 function nastavRoliPoPrihlaseni(osoba){
   role = osoba.role; person = osoba.name; jeLukas = !!osoba.jeLukas;
+  osobniView = null; // po (opětovném) přihlášení vždy zpět na "moje vlastní úkoly"
   document.getElementById('user-badge').style.display = '';
   document.getElementById('user-badge-name').textContent = osoba.name;
   document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
@@ -891,7 +893,7 @@ onAuthStateChanged(auth, function(user){
 });
 
 function setPerson(p){
-  person = p; localStorage.setItem('dash_person', p);
+  osobniView = p; // jen přepnutí zobrazení v "Osobní úkoly" — neovlivňuje Založil/provedl
   renderPrehled();
 }
 
@@ -1063,15 +1065,15 @@ function renderPrehled(){
   document.getElementById('prehled-vykladky').innerHTML = dayBlock('vykladka');
 
   const showPersonSwitch = role==='owner';
-  const myTasks = role==='sklad'
-    ? ukoly.filter(u=>u.stav!=='vyrizene' && u.resitel==='Martin')
-    : ukoly.filter(u=>u.stav!=='vyrizene' && u.resitel===person);
+  const viewPerson = showPersonSwitch ? (osobniView || person) : 'Martin';
+  const myTasks = ukoly.filter(u=>u.stav!=='vyrizene' && u.resitel===viewPerson);
   myTasks.sort((a,b)=> (isOverdue(b)-isOverdue(a)) || a.termin.localeCompare(b.termin));
   let osobniHtml = '';
   if(showPersonSwitch){
     osobniHtml += `<div class="seg-pill" style="margin-bottom:10px">
-      <button class="seg-pill-btn ${person==='Lukáš'?'on':''}" onclick="setPerson('Lukáš')">Lukáš</button>
-      <button class="seg-pill-btn ${person==='Ondřej'?'on':''}" onclick="setPerson('Ondřej')">Ondřej</button>
+      <button class="seg-pill-btn ${viewPerson==='Lukáš'?'on':''}" onclick="setPerson('Lukáš')">Lukáš</button>
+      <button class="seg-pill-btn ${viewPerson==='Ondřej'?'on':''}" onclick="setPerson('Ondřej')">Ondřej</button>
+      <button class="seg-pill-btn ${viewPerson==='Martin'?'on':''}" onclick="setPerson('Martin')">Martin</button>
     </div>`;
   }
   if(!myTasks.length){
