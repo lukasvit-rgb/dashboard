@@ -613,21 +613,21 @@ function seedNakladky(){
   const iso = d => { const x=new Date(t); x.setDate(t.getDate()+d); return dateToStr(x); };
   return [
     {id:'n1', typ:'vykladka', datum:iso(0), cas:'09:00', partner:'Novák s.r.o.', poznamka:'Menší dodávka na vytřídění', stav:'nove',
-      ocekavano:'trideni', prirazeniDelnici:[],
+      ocekavano:'trideni',
       material:[{typ:'EUR A', dlQty:40, realQty:null, tridirna:null, sklad:null, opravna:null}],
       dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil:'Lukáš', ts:Date.now()},
     {id:'n2', typ:'nakladka', datum:iso(0), cas:'13:30', partner:'Kovo Zlín a.s.', poznamka:'Nakládka hotového zboží', stav:'nove',
       material:[{typ:'100x120', dlQty:60}], zalozil:'Ondřej', ts:Date.now()},
     {id:'n3', typ:'vykladka', datum:iso(1), cas:'10:00', partner:'Palety Morava', poznamka:'2 kamiony, čeká se třídění', stav:'nove',
-      ocekavano:'trideni', prirazeniDelnici:[],
+      ocekavano:'trideni',
       material:[{typ:'STD palety', dlQty:120, realQty:null, tridirna:null, sklad:null, opravna:null},{typ:'EUR mix', dlQty:30, realQty:null, tridirna:null, sklad:null, opravna:null}],
       dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil:'Lukáš', ts:Date.now()},
     {id:'n4', typ:'vykladka', datum:iso(0), cas:'11:00', partner:'Diton', poznamka:'Dle domluvy mají být palety už vytříděné, OK stav.', stav:'nove',
-      ocekavano:'ok', prirazeniDelnici:[],
+      ocekavano:'ok',
       material:[{typ:'EUR B', dlQty:60, realQty:null, tridirna:null, sklad:null, opravna:null}],
       dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil:'Ondřej', ts:Date.now()},
     {id:'n5', typ:'vykladka', datum:iso(-1), cas:'08:15', partner:'Dřevopal s.r.o.', poznamka:'', stav:'vyrizene',
-      ocekavano:'ok', prirazeniDelnici:[],
+      ocekavano:'ok',
       material:[{typ:'EUR A', dlQty:50, realQty:47, tridirna:20, sklad:15, opravna:12}],
       dlFoto:'demo', fotoSklad:['demo','demo'], fotoTridirna:['demo','demo','demo','demo','demo','demo'], fotoOpravna:['demo','demo'],
       neshodaKomentar:'Dorazily i poškozené kusy, ačkoliv mělo být dle domluvy vše OK. Vyfoceno pro reklamaci u dodavatele.', zalozil:'Ondřej', ts:Date.now()-86400000},
@@ -1228,9 +1228,8 @@ function setNakFilter(v){ nakFilter=v; renderNakladky(); }
 /* ============ SHEET: NAKLÁDKA / VYKLÁDKA ============ */
 function openNakladka(id){
   const rec = id ? nakladky.find(n=>n.id===id) : null;
-  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', poznamka:'', stav:'nove', ocekavano:'ok', prirazeniDelnici:[], material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: role==='owner'?'Lukáš':'Martin', ts:Date.now(), _isNew:!rec};
+  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: role==='owner'?'Lukáš':'Martin', ts:Date.now(), _isNew:!rec};
   window._nkData = data;
-  window._nkPrevAssign = rec ? [...(rec.prirazeniDelnici||[])] : [];
   window._nkAddingCustomer = false;
   window._nkNewCustName = '';
   window._nkNewCustMats = [];
@@ -1250,9 +1249,6 @@ function nkSyncFields(){
 
 function nkNeshoda(d){
   return d.typ==='vykladka' && d.ocekavano==='ok' && d.material.some(m=>(m.tridirna||0)>0 || (m.opravna||0)>0);
-}
-function nkNeedsAssign(d){
-  return d.typ==='vykladka' && (d.ocekavano==='trideni' || d.material.some(m=>(m.tridirna||0)>0));
 }
 function nkTotals(d){
   let sklad=0, tridirna=0, opravna=0, realMissing=false, dlMissing=false, protokolOk=true;
@@ -1300,34 +1296,33 @@ function nkPhotoGridHtml(data, field, label, hint, minCount){
     ${hint?`<div class="hint" style="margin:-2px 0 10px">${hint}</div>`:''}
   `;
 }
+function nkPhotoTriggers(data){
+  const t = nkTotals(data);
+  return {
+    sklad: t.sklad>0 || data.ocekavano==='ok',
+    tridirna: t.tridirna>0 || data.ocekavano==='trideni',
+    opravna: t.opravna>0 || data.ocekavano==='oprava',
+  };
+}
 function nkPhotosHtml(data){
   if(data.typ!=='vykladka') return '';
-  const t = nkTotals(data);
+  const trig = nkPhotoTriggers(data);
   let html = '';
-  if(t.sklad>0) html += nkPhotoGridHtml(data,'fotoSklad','Foto dobrých palet (rovnou na sklad)','Dokumentace stavu palet bez závad',2);
-  if(t.tridirna>0) html += nkPhotoGridHtml(data,'fotoTridirna','Foto poškozených palet k třídění','Vyfoť nejvíc poškozené kusy z dodávky',6);
-  if(t.opravna>0) html += nkPhotoGridHtml(data,'fotoOpravna','Foto kamionu / stavu palet pro opravnu','Jak palety vypadaly při vyložení',2);
+  if(trig.sklad) html += nkPhotoGridHtml(data,'fotoSklad','Foto dobrých palet (rovnou na sklad)','Dokumentace stavu palet bez závad',2);
+  if(trig.tridirna) html += nkPhotoGridHtml(data,'fotoTridirna','Foto poškozených palet k třídění','Vyfoť nejvíc poškozené kusy z dodávky',6);
+  if(trig.opravna) html += nkPhotoGridHtml(data,'fotoOpravna','Foto kamionu / stavu palet pro opravnu','Jak palety vypadaly při vyložení',2);
   return html;
-}
-function nkAssignHtml(data){
-  if(!nkNeedsAssign(data)) return '';
-  return `
-    <div class="field-lbl">Kdo bude třídit (zadá Ondra nebo Martin)</div>
-    <div class="chips" id="nk-assign-chips">
-      ${WORKERS.map(w=>`<button type="button" class="chip${(data.prirazeniDelnici||[]).includes(w.name)?' on':''}" onclick="nkToggleAssign('${w.name}')"><div class="chip-dot" style="background:${w.color}"></div>${w.name}</button>`).join('')}
-    </div>
-    <div class="sheet-sub" style="margin-top:-4px;margin-bottom:8px">Přiřazení se rovnou promítne do Plánu práce na datum ${fmtDate(data.datum)}.</div>
-  `;
 }
 function nkChecklist(d){
   const t = nkTotals(d);
+  const trig = nkPhotoTriggers(d);
   const items = [];
   if(d.typ==='vykladka'){
     items.push({label:'Foto dodacího listu', ok: !!d.dlFoto});
     items.push({label:'Počty podle DL i reálně vyplněné u všech položek', ok: !t.dlMissing && !t.realMissing});
-    if(t.sklad>0) items.push({label:`Foto dobrých palet — min. 2 (${(d.fotoSklad||[]).length}/2)`, ok:(d.fotoSklad||[]).length>=2});
-    if(t.tridirna>0) items.push({label:`Foto poškozených palet k třídění — min. 6 (${(d.fotoTridirna||[]).length}/6)`, ok:(d.fotoTridirna||[]).length>=6});
-    if(t.opravna>0){
+    if(trig.sklad) items.push({label:`Foto dobrých palet — min. 2 (${(d.fotoSklad||[]).length}/2)`, ok:(d.fotoSklad||[]).length>=2});
+    if(trig.tridirna) items.push({label:`Foto poškozených palet k třídění — min. 6 (${(d.fotoTridirna||[]).length}/6)`, ok:(d.fotoTridirna||[]).length>=6});
+    if(trig.opravna){
       items.push({label:`Foto kamionu pro opravnu — min. 2 (${(d.fotoOpravna||[]).length}/2)`, ok:(d.fotoOpravna||[]).length>=2});
       items.push({label:'Třídicí protokol kompletní (rozpad sedí na reálný počet)', ok: t.protokolOk});
     }
@@ -1357,7 +1352,6 @@ function nkRefreshDynamic(){
   const d = window._nkData;
   document.getElementById('nk-neshoda-block').innerHTML = nkNeshodaHtml(d);
   document.getElementById('nk-photos-block').innerHTML = nkPhotosHtml(d);
-  document.getElementById('nk-assign-block').innerHTML = nkAssignHtml(d);
   document.getElementById('nk-checklist-block').innerHTML = nkChecklistHtml(d);
   const btn = document.getElementById('nk-close-btn');
   if(btn) btn.disabled = !nkCanClose(d);
@@ -1454,7 +1448,6 @@ function renderNakladkaSheet(){
 
     <div id="nk-neshoda-block">${nkNeshodaHtml(data)}</div>
     <div id="nk-photos-block">${nkPhotosHtml(data)}</div>
-    <div id="nk-assign-block">${nkAssignHtml(data)}</div>
     <div id="nk-checklist-block">${nkChecklistHtml(data)}</div>
 
     <div class="field-lbl">Poznámka</div>
@@ -1561,14 +1554,6 @@ function nkPartnerSelect(value){
 }
 function nkSetTyp(t){ nkSyncFields(); window._nkData.typ=t; renderNakladkaSheet(); }
 function nkSetOcekavano(v){ nkSyncFields(); window._nkData.ocekavano=v; renderNakladkaSheet(); }
-function nkToggleAssign(name){
-  const d = window._nkData;
-  d.prirazeniDelnici = d.prirazeniDelnici || [];
-  const i = d.prirazeniDelnici.indexOf(name);
-  if(i>=0) d.prirazeniDelnici.splice(i,1); else d.prirazeniDelnici.push(name);
-  nkRefreshDynamic();
-}
-
 function renderMaterialRows(){
   const d = window._nkData;
   const canEditPlan = role==='owner';
@@ -1656,23 +1641,6 @@ function nkSave(stav){
   delete d._isNew;
   const idx = nakladky.findIndex(n=>n.id===d.id);
   if(idx>=0) nakladky[idx]=d; else nakladky.unshift(d);
-
-  // Sync přiřazení dělníků do Plánu práce na datum vykládky
-  const prevAssign = window._nkPrevAssign || [];
-  const nowAssign = d.prirazeniDelnici || [];
-  prevAssign.filter(w=>!nowAssign.includes(w)).forEach(w=>{
-    const key = d.datum+'|'+w;
-    if(workPlan[key] && workPlan[key].vykladkaId===d.id){
-      delete workPlan[key];
-      fbDelete('workplan', key);
-    }
-  });
-  nowAssign.forEach(w=>{
-    const key = d.datum+'|'+w;
-    const val = {typ:'trideni', vykladkaId:d.id, poznamka:d.partner};
-    workPlan[key] = val;
-    fbSet('workplan', key, {...val, date:d.datum, worker:w});
-  });
 
   fbSet('nakladky', d.id, d);
   closeSheet(); renderNakladky();
@@ -1965,11 +1933,9 @@ function renderQueue(){
   if(!queue.length){ el.innerHTML = '<div class="empty" style="padding:16px">Žádné čekající kamiony na vytřídění.</div>'; return; }
   el.innerHTML = queue.map(n=>{
     const est = Math.max(1, n.material.filter(m=>(m.tridirna||0)>0).length);
-    const assigned = n.prirazeniDelnici||[];
     return `<div class="queue-card" style="cursor:pointer" onclick="openNakladka('${n.id}')">
       <div class="qc-title">🚚 ${escapeHtml(n.partner)} — ${fmtDate(n.datum)}</div>
       <div class="qc-meta">${n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ')} · odhad ≈ ${est} dělníko-den${est>1?'y':''}</div>
-      <div class="qc-meta" style="margin-top:3px;font-weight:800">${assigned.length ? '👷 '+assigned.join(', ') : '⚠ zatím nepřiřazeno — klepni pro přiřazení'}</div>
     </div>`;
   }).join('');
 }
@@ -2109,7 +2075,6 @@ window.nkCancelNewCustomer = nkCancelNewCustomer;
 window.nkPartnerSelect = nkPartnerSelect;
 window.nkSetTyp = nkSetTyp;
 window.nkSetOcekavano = nkSetOcekavano;
-window.nkToggleAssign = nkToggleAssign;
 window.nkRefreshDynamic = nkRefreshDynamic;
 window.nkMatField = nkMatField;
 window.nkAddMaterialRow = nkAddMaterialRow;
