@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dashboard">
+<title>Dashboard Palety Vít</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f2f7;--bg2:#ffffff;--bg3:#e8e8ed;--bg4:#d8d8dd;
+  --border:#cccccc;--ink:#111111;--dim:#888888;--muted:#bbbbbb;
+  --green:#27ae60;--red:#e05555;--yellow:#e6a800;--blue:#2980b9;
+  --hh:52px;
+  --tabbar-h:58px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Barlow',sans-serif;min-height:100vh;max-width:100%;margin:0 auto;touch-action:manipulation}
+button,input,textarea,select{font-family:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* HEADER */
+.header{height:calc(var(--hh) + env(safe-area-inset-top));background:#ffffff;border-bottom:1px solid var(--border);padding:env(safe-area-inset-top) 14px 0;box-sizing:border-box;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo-wrap{display:flex;align-items:center;gap:12px;min-width:0}
+.logo{display:flex;flex-direction:column;line-height:1}
+.logo-top{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;letter-spacing:4px;color:#111111}
+.logo-bot{display:flex;gap:8px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;letter-spacing:4px;color:#111111}
+.role-switch{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.icon-btn{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
+.seg-pill{display:flex;background:var(--bg3);border-radius:20px;padding:2px}
+.seg-pill-btn{padding:6px 11px;background:none;border:none;border-radius:18px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);cursor:pointer}
+.seg-pill-btn.on{background:var(--ink);color:#fff}
+.user-badge{display:flex;align-items:center;gap:8px}
+.user-badge-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+
+/* PŘIHLÁŠENÍ */
+.login-overlay{position:fixed;inset:0;background:var(--bg);z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.login-box{width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px}
+.login-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;letter-spacing:5px;text-align:center;margin-bottom:6px}
+.login-box input{font-family:'Barlow',sans-serif;font-size:15px;padding:12px 14px;border-radius:10px;border:1.5px solid var(--border);background:#fff;color:var(--ink);width:100%}
+.login-box input:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.login-btn{padding:13px;background:var(--ink);color:#fff;border:none;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-err{font-size:12.5px;color:var(--red);font-weight:700;min-height:16px;text-align:center}
+
+/* BOTTOM TAB BAR (nativní app navigace) */
+.tabbar{position:fixed;left:0;right:0;bottom:0;display:flex;background:#ffffff;border-top:1px solid var(--border);z-index:150;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar-btn{flex:1;height:var(--tabbar-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;color:var(--dim);cursor:pointer}
+.tabbar-btn .ic{font-size:21px;line-height:1}
+.tabbar-btn .lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+.tabbar-btn.on{color:var(--ink)}
+
+/* DEMO BANNER */
+.demo-banner{background:#fff8e6;border-bottom:1px solid #f0d98a;color:#7a5c00;font-size:11.5px;font-weight:700;padding:7px 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;display:flex;align-items:center;gap:5px}
+
+/* SCREENS */
+.screen{display:none;padding:14px 14px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 90px)}
+.screen.on{display:block}
+.sec-lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);padding:12px 0 6px}
+.sec-lbl:first-child{padding-top:0}
+
+/* WEEK STRIP */
+.week-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.week-nav-btn{width:36px;height:36px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:16px;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.week-nav-btn:active{background:var(--bg3)}
+.week-nav-label{flex:1;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.5px;color:var(--dim)}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px}
+.day-cell{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 2px;text-align:center;cursor:pointer;position:relative}
+.day-cell.today{border-color:var(--ink)}
+.day-cell.on{background:var(--ink);border-color:var(--ink)}
+.day-cell.on .day-wd,.day-cell.on .day-num{color:#fff}
+.day-wd{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--dim)}
+.day-num{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;margin-top:1px}
+.day-dots{display:flex;justify-content:center;gap:2px;margin-top:4px;height:6px}
+.day-dot{width:5px;height:5px;border-radius:50%}
+
+/* CARDS / LIST ITEMS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:8px}
+.item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:7px;transition:transform .1s}
+.item:active{transform:scale(.985)}
+.item-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.item-body{flex:1;min-width:0}
+.item-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.item-meta{font-size:12px;color:var(--dim);margin-top:2px}
+.item-side{text-align:right;flex-shrink:0}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.pill-new{background:#e8f0fa;color:var(--blue)}
+.pill-done{background:#e5f5ec;color:var(--green)}
+.pill-late{background:#fbe9e9;color:var(--red)}
+.pill-recurring{background:#eef2e6;color:#5c7a3a}
+.empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:14px}
+
+/* CHIPS */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{padding:7px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .12s}
+.chip.on{background:var(--bg3);color:var(--ink);border-color:var(--ink)}
+.chip-dot{width:8px;height:8px;border-radius:50%}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900}
+.stat-lbl{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-top:2px}
+
+/* FAB */
+.fab-wrap{position:fixed;bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:100%;max-width:100%;padding:10px 16px;background:linear-gradient(transparent, #f2f2f7 30%);z-index:140}
+.fab{width:100%;padding:15px;background:var(--ink);color:#ffffff;border:none;border-radius:12px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer}
+.fab:active{opacity:.85}
+
+/* MODAL / SHEET */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:200;align-items:flex-end}
+.overlay.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-height:92vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px}
+.sheet-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin-bottom:2px}
+.sheet-sub{font-size:12px;color:var(--dim);margin-bottom:14px}
+.field-lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:10px 0 5px}
+.field-lbl:first-of-type{padding-top:0}
+.finp,.fsel,.ftxt{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:11px 12px;font-size:15px}
+.ftxt{resize:vertical;min-height:64px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg{display:flex;gap:6px;margin-bottom:4px}
+.seg-btn{flex:1;padding:10px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);cursor:pointer;text-align:center}
+.seg-btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.material-row{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;gap:6px;align-items:center;margin-bottom:6px}
+.material-row select,.material-row input{padding:8px;font-size:13px}
+.mat-row-del{width:32px;height:32px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);color:var(--red);font-size:15px;font-weight:700;cursor:pointer;padding:0;flex-shrink:0}
+.stredisko-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.stredisko-cell{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center}
+.stredisko-cell .lbl{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.stredisko-cell input{width:100%;border:none;background:transparent;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;padding:4px 0}
+.photo-box{border:1.5px dashed var(--border);border-radius:9px;background:var(--bg2);text-align:center;padding:16px;cursor:pointer;margin-bottom:4px}
+.photo-box img{max-width:100%;max-height:160px;border-radius:6px;display:block;margin:0 auto}
+.photo-box .hint{font-size:12px;color:var(--dim);margin-top:6px}
+.btn{padding:12px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;width:100%;margin-top:6px}
+.btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn-danger{color:var(--red)}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{margin-top:6px}
+.close-x{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;color:var(--dim);cursor:pointer;padding:4px}
+
+/* COMMENTS */
+.comment{padding:9px 0;border-bottom:1px solid var(--border)}
+.comment:last-child{border-bottom:none}
+.comment-who{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800}
+.comment-txt{font-size:14px;margin-top:1px}
+.comment-ts{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* WORKER / CAPACITY */
+.worker-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px}
+.worker-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.worker-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;flex:1}
+.worker-status{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.absence-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.absence-item:last-child{border-bottom:none}
+
+/* PLÁN PRÁCE */
+.plan-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:7px;cursor:pointer}
+.plan-row:active{transform:scale(.985)}
+.plan-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.plan-name{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;flex:1}
+.plan-assign{text-align:right}
+.plan-assign-typ{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:.5px}
+.plan-assign-note{font-size:11px;color:var(--dim);margin-top:1px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.queue-card{background:#fff8e6;border:1px solid #f0d98a;border-radius:10px;padding:11px 13px;margin-bottom:7px}
+.queue-card .qc-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:#7a5c00}
+.queue-card .qc-meta{font-size:12px;color:#8a6d1f;margin-top:1px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.photo-thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);flex-shrink:0}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;padding:0}
+.photo-add{width:72px;height:72px;border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:var(--dim);cursor:pointer;background:var(--bg2);flex-shrink:0}
+.photo-file{position:relative;width:72px;height:72px;border-radius:8px;border:1px solid var(--border);flex-shrink:0;background:var(--bg2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;padding:2px;overflow:hidden}
+.photo-file .pf-name{font-size:8px;color:var(--dim);line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
+.photo-thumb-badge{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;line-height:1}
+.photo-thumb-loading{color:var(--dim);font-size:12px;text-align:center;padding:14px 4px}
+.photo-thumb .photo-thumb-loading,.gal-tile .photo-thumb-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;padding:0}
+.gal-group{margin-bottom:16px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.gal-tile{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;background:var(--bg2)}
+.gal-tile img{width:100%;height:100%;object-fit:cover;display:block}
+.checklist-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:13px}
+
+.toast{position:fixed;top:66px;left:50%;transform:translateX(-50%);background:var(--green);color:#ffffff;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;padding:11px 20px;border-radius:8px;z-index:300;opacity:0;transition:opacity .25s;white-space:nowrap;pointer-events:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+.toast.on{opacity:1}
+
+/* PŘEHLED (denní souhrn firmy) */
+.snap-note{background:#fff8e6;border:1px solid #f0d98a;border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;color:#7a5c00;margin-bottom:10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.snap-note-more{font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.ov-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:10px}
+.ov-big{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;line-height:1}
+.ov-sub{font-size:11px;color:var(--dim);margin-top:2px}
+.ov-mini-row{display:flex;gap:8px;margin-top:10px}
+.ov-mini{flex:1;background:var(--bg3);border-radius:9px;padding:8px 10px}
+.ov-mini-lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed',sans-serif;font-weight:700}
+.ov-mini-val{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;margin-top:1px}
+.ov-plus{color:var(--green)}
+.ov-minus{color:var(--red)}
+.ov-breakdown{margin-top:10px;display:flex;flex-direction:column;gap:3px}
+.ov-brow{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bg3)}
+.ov-brow:last-child{border-bottom:none}
+.ov-brow-val{font-weight:700;font-family:'Barlow Condensed',sans-serif}
+.ov-flag{display:inline-block;margin-top:8px;font-size:11px;color:#7a5c00;background:#fff8e6;border:1px solid #f0d98a;border-radius:6px;padding:5px 8px;line-height:1.4}
+.ov-day-hdr{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin:10px 0 4px}
+.ov-day-hdr:first-child{margin-top:0}
+
+/* PROFITABILITA (jen Lukáš) */
+.rent-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.rent-name{flex:1;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700}
+.rent-inp{width:74px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:14px;text-align:center}
+.rent-margin{width:96px;text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800}
+.profit-card{background:var(--ink);color:#fff;border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+.profit-lbl{font-size:11px;color:#ccc;text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed',sans-serif;font-weight:700}
+.profit-val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;white-space:nowrap}
+.profit-val.pos{color:#6fdb96}
+.profit-val.neg{color:#ff8a8a}
+
+@media (min-width:600px){
+  .screen{padding:18px 24px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 90px)}
+  .fab-wrap{padding:10px 24px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-wrap">
+    <div class="logo">
+      <div class="logo-top">PALETY</div>
+      <div class="logo-bot"><span>VÍ</span><span>T</span></div>
+    </div>
+  </div>
+  <div class="role-switch">
+    <button class="icon-btn" id="zk-btn" onclick="openZakaznikList()" style="display:none" aria-label="Zákazníci">👥</button>
+    <div class="user-badge" id="user-badge" style="display:none">
+      <span class="user-badge-name" id="user-badge-name"></span>
+      <button class="icon-btn" id="logout-btn" onclick="doLogout()" aria-label="Odhlásit" title="Odhlásit">⏻</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-overlay" id="login-overlay" style="display:none">
+  <div class="login-title">PALETY VÍT</div>
+  <form class="login-box" id="login-form">
+    <input type="email" id="login-email" placeholder="E-mail" autocomplete="username" required>
+    <input type="password" id="login-heslo" placeholder="Heslo" autocomplete="current-password" required>
+    <button type="submit" class="login-btn" id="login-btn">Přihlásit</button>
+    <div class="login-err" id="login-err"></div>
+    <button type="button" id="forgot-btn" style="background:none;border:none;color:var(--dim);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:4px">Zapomenuté heslo</button>
+  </form>
+</div>
+
+<!-- PŘEHLED (denní souhrn firmy) -->
+<div class="screen on" id="screen-prehled">
+  <div class="sec-lbl">Nakládky dnes</div>
+  <div class="ov-card" id="prehled-nakladky"></div>
+
+  <div class="sec-lbl">Vykládky dnes</div>
+  <div class="ov-card" id="prehled-vykladky"></div>
+
+  <div class="sec-lbl">Osobní úkoly</div>
+  <div class="ov-card" id="prehled-osobni"></div>
+
+  <div class="sec-lbl">Opravy dnes</div>
+  <div class="ov-card" id="prehled-opravy"></div>
+
+  <div class="sec-lbl">Výkup dnes</div>
+  <div class="ov-card" id="prehled-vykup"></div>
+
+  <div class="sec-lbl">Třídění dnes</div>
+  <div class="ov-card" id="prehled-trideni"></div>
+
+  <div class="snap-note" id="prehled-snap-note"></div>
+
+  <div class="sec-lbl">Kasa</div>
+  <div class="ov-card" id="prehled-kasa"></div>
+</div>
+
+<!-- PROFITABILITA (jen Lukáš) -->
+<div class="screen" id="screen-profitabilita">
+  <div class="sec-lbl">Zisk z výkupů</div>
+  <div class="chips" id="prof-period-chips"></div>
+  <div id="prof-result"></div>
+
+  <div class="sec-lbl">Prodejní ceny za kus</div>
+  <div id="prof-note"></div>
+  <div id="prof-prices"></div>
+</div>
+
+<!-- NAKLÁDKY / VYKLÁDKY -->
+<div class="screen" id="screen-nakladky">
+  <div class="week-nav">
+    <button class="week-nav-btn" onclick="weekNav(-1)">◀</button>
+    <div class="week-nav-label" id="week-label"></div>
+    <button class="week-nav-btn" onclick="weekNav(1)">▶</button>
+  </div>
+  <div class="week-strip" id="week-strip"></div>
+  <div class="chips" id="nak-chips"></div>
+  <div id="nak-list"></div>
+</div>
+
+<!-- ÚKOLY -->
+<div class="screen" id="screen-ukoly">
+  <div class="stats-row" id="ukol-stats"></div>
+  <div class="chips" id="ukol-chips"></div>
+  <div id="ukol-list"></div>
+</div>
+
+<!-- PLÁN PRÁCE -->
+<div class="screen" id="screen-kapacita">
+  <div class="sec-lbl">Čeká na vytřídění</div>
+  <div id="queue-list"></div>
+
+  <div class="week-nav" style="margin-top:6px">
+    <button class="week-nav-btn" onclick="planWeekNav(-1)">◀</button>
+    <div class="week-nav-label" id="plan-week-label"></div>
+    <button class="week-nav-btn" onclick="planWeekNav(1)">▶</button>
+  </div>
+  <div class="week-strip" id="plan-day-strip"></div>
+
+  <div class="sec-lbl" id="plan-day-lbl"></div>
+  <div id="plan-list"></div>
+</div>
+
+<!-- GALERIE (soukromý náhled fotek, appka je nesdílí veřejně) -->
+<div class="screen" id="screen-galerie">
+  <div id="galerie-list"></div>
+</div>
+
+<div class="fab-wrap" id="fab-wrap">
+  <button class="fab" id="fab-btn"></button>
+</div>
+
+<div class="tabbar">
+  <button class="tabbar-btn on" id="tab-prehled" onclick="switchTab('prehled',this)"><span class="ic">🏠</span><span class="lbl">Přehled</span></button>
+  <button class="tabbar-btn" id="tab-nakladky" onclick="switchTab('nakladky',this)"><span class="ic">📦</span><span class="lbl">Nakládky</span></button>
+  <button class="tabbar-btn" id="tab-ukoly" onclick="switchTab('ukoly',this)"><span class="ic">✅</span><span class="lbl">Úkoly</span></button>
+  <button class="tabbar-btn" id="tab-kapacita" onclick="switchTab('kapacita',this)"><span class="ic">👷</span><span class="lbl">Plán práce</span></button>
+  <button class="tabbar-btn" id="tab-galerie" onclick="switchTab('galerie',this)"><span class="ic">📷</span><span class="lbl">Galerie</span></button>
+  <button class="tabbar-btn" id="tab-profitabilita" onclick="switchTab('profitabilita',this)" style="display:none"><span class="ic">💰</span><span class="lbl">Profit</span></button>
+</div>
+
+<!-- OVERLAY / SHEET -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;letter-spacing:5px">PALETY VÍT</div>
+  <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--dim);letter-spacing:1px;text-transform:uppercase">Připojuji se k databázi…</div>
+</div>
+<div id="offline-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:var(--red);color:#fff;text-align:center;font-size:12px;font-weight:700;padding:6px;z-index:600">⚠ Chyba připojení k databázi — zkontroluj internet a obnov stránku</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+/* ============ PŘIHLAŠOVÁNÍ ============
+   Skutečné přihlašování (Firebase Auth), stejný projekt (vykup-palet) a stejný
+   vzor jako appky Pokladna a Výkup palet — Lukáš a Ondřej tak nemají pro appky
+   firmy dvoje přihlašovací údaje. Role appky (majitel/skladník) i jméno se
+   odvozují z přihlášeného e-mailu, ne z ručního přepínače (ten byl zrušen —
+   nic nechránil). Pozor: appka teď vyžaduje přihlášení, ale Firestore Rules
+   zůstávají otevřené (`allow read, write: if true`) — to je stejné omezení,
+   jaké má appka Pokladna (viz claude/revize_pokladna.md, bod 8): přihlášení
+   chrání appku samotnou, ne přímý přístup přes Firestore REST API. */
+const authFirebaseConfig = {
+  apiKey: "AIzaSyD60m7hSErvSuOQul3kfAjWPpGfVmyVVuM",
+  authDomain: "vykup-palet.firebaseapp.com",
+  projectId: "vykup-palet",
+  storageBucket: "vykup-palet.firebasestorage.app",
+  messagingSenderId: "264591837143",
+  appId: "1:264591837143:web:5bd414b54a33a3fde26d92"
+};
+const authApp = initializeApp(authFirebaseConfig, "auth");
+const auth = getAuth(authApp);
+// Stejná Firebase instance (projekt vykup-palet) se navíc používá i pro data —
+// appka odsud živě čte kolekce "pokladna" a "vykupy" (appky Pokladna/Výkup palet)
+// pro záložku Přehled, a kolekci "sell_prices" pro záložku Profitabilita.
+const vpdb = getFirestore(authApp);
+
+// Třetí, samostatná Firebase instance — appka Evidence oprav má vlastní projekt.
+const evidenceFirebaseConfig = {
+  apiKey: "AIzaSyDIEzhaFjq5JvgGd3rdxXUdYyTHKmS85S4",
+  authDomain: "evidence-oprav.firebaseapp.com",
+  projectId: "evidence-oprav",
+  storageBucket: "evidence-oprav.firebasestorage.app",
+  messagingSenderId: "1059190480737",
+  appId: "1:1059190480737:web:a50696e0317ca1eb9eef20"
+};
+const evApp = initializeApp(evidenceFirebaseConfig, "evidence");
+const evdb = getFirestore(evApp);
+
+// Role appky: 'owner' = majitel (Lukáš, Ondřej) vidí vždy úplně stejně;
+// 'sklad' = skladník Martin, omezená appka (viz níže).
+const PERSON_BY_EMAIL = {
+  'lukas.vit@v-pallets.cz':  { name:'Lukáš',  role:'owner', jeLukas:true },
+  'ondrej.vit@paletyvit.cz': { name:'Ondřej', role:'owner', jeLukas:false },
+  'bortlikmartin2@seznam.cz':{ name:'Martin', role:'sklad', jeLukas:false },
+};
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA2E1Cz9u1f6iNX6uxEv_ubrfaoHGscvF8",
+  authDomain: "dashboard-palety-vit.firebaseapp.com",
+  projectId: "dashboard-palety-vit",
+  storageBucket: "dashboard-palety-vit.firebasestorage.app",
+  messagingSenderId: "383121646386",
+  appId: "1:383121646386:web:0d935d4a0106d2cd376d2b"
+};
+const fbApp = initializeApp(firebaseConfig);
+const fdb = getFirestore(fbApp);
+const COL = {
+  nakladky: collection(fdb,'nakladky'),
+  ukoly: collection(fdb,'ukoly'),
+  workplan: collection(fdb,'workplan'),
+  zakaznici: collection(fdb,'zakaznici'),
+  ukoly_sablony: collection(fdb,'ukoly_sablony'),
+};
+function fbSet(colName, id, data){
+  setDoc(doc(COL[colName], id), JSON.parse(JSON.stringify(data))).catch(e=>{
+    console.error('fbSet', colName, id, e);
+    document.getElementById('offline-banner').style.display='block';
+    toast('⚠ Uložení se nepovedlo — zkontroluj internet');
+  });
+}
+function fbDelete(colName, id){
+  deleteDoc(doc(COL[colName], id)).catch(e=>{
+    console.error('fbDelete', colName, id, e);
+    document.getElementById('offline-banner').style.display='block';
+  });
+}
+
+/* ============ DATA ============ */
+// Plný master seznam produktů (typy palet) — viz claude/seznam_produktu_master.md v projektu.
+// "EUR mix" navíc oproti master seznamu: logistická zkratka pro netříděnou dodávku EUR A/B.
+const PALLETS = ['EUR A','EUR B','EUR AC','EUR BC','EUR mix','STD 15','STD 15-C','STD 10','STD 10-C','STD 05','STD 05-C','100×120','100×120-C','100×120 rámová','Atypická','Bedna','Pal. ohrádka','CP3','Paleta 80×60','Paletové víko'];
+const OCEKAVANO = {
+  ok:{label:'OK — rovnou sklad', color:'var(--green)'},
+  trideni:{label:'Očekává se třídění', color:'var(--yellow)'},
+  oprava:{label:'Očekává se oprava', color:'var(--red)'},
+};
+const WORKERS = [
+  {name:'Radek',  color:'#2ecc40'},
+  {name:'Martin', color:'#7d7d7d'},
+  {name:'Zavadil',color:'#4a9eff'},
+  {name:'Pavel',  color:'#e67e22'},
+];
+const STREDISKA = {tridirna:{label:'Třídírna',color:'#e6a800'}, sklad:{label:'Sklad',color:'#27ae60'}, opravna:{label:'Opravna',color:'#e05555'}};
+const WEEKDAY_CS=['Ne','Po','Út','St','Čt','Pá','So'];
+
+// Katalog typů palet appky Výkup palet (projekt vykup-palet) — jména i výchozí
+// výkupní ceny odpovídají appce, viz claude/vykup_palet_multiuser_profitabilita_navrh.md.
+// Používá se v Profitabilitě k dopočtu marže (poškozené typy mají jiný fixní náklad).
+const VYKUP_PALLETS = [
+  {id:'eur_a',  n:'EUR A',         p:150},
+  {id:'eur_b',  n:'EUR B',         p:100},
+  {id:'eur_ac', n:'EUR AC',        p:40},
+  {id:'eur_bc', n:'EUR BC',        p:40},
+  {id:'std15',  n:'STD 15',        p:40},
+  {id:'std15c', n:'STD 15-C',      p:10},
+  {id:'std10',  n:'STD 10',        p:40},
+  {id:'std10c', n:'STD 10-C',      p:10},
+  {id:'std05',  n:'STD 05',        p:30},
+  {id:'std05c', n:'STD 05-C',      p:10},
+  {id:'x100',   n:'100×120',       p:50},
+  {id:'x100c',  n:'100×120-C',     p:10},
+  {id:'x100r',  n:'100×120 rámová',p:35},
+  {id:'ohradka',n:'Pal. ohrádka',  p:100},
+  {id:'cp3',    n:'CP3',           p:50},
+  {id:'p8060',  n:'Paleta 80×60',  p:30},
+  {id:'viko',   n:'Paletové víko', p:20},
+  {id:'koval',  n:'Kovové obaly',  p:0},
+  {id:'plast',  n:'Plastové obaly',p:0},
+];
+const VYKUP_DAMAGED_IDS = ['eur_ac','eur_bc','std15c','std10c','std05c','x100c','koval','plast'];
+
+// Pozn. (13.9.2026): denní přehled firmy (Kasa/Výkup/Opravy) byl dřív jednorázový
+// ručně natažený snímek (DENNI_PREHLED). Appka teď čte tahle data naživo přímo
+// z appek Pokladna/Výkup palet/Evidence oprav — viz computePrehledData() níže
+// a nové Firebase instance vpdb/evdb výše.
+
+let role = 'sklad'; // 'owner' | 'sklad' — bezpečný výchozí stav, dokud appka nezná přihlášeného uživatele (viz nastavRoliPoPrihlaseni)
+let person = 'Lukáš'; // skutečná identita aktuálně přihlášeného — používá se pro Založil/provedl/zadavatel, NIKDY neměnit přepínačem zobrazení
+let osobniView = null; // null = zobrazit úkoly osoby z 'person'; jinak ruční přepnutí v sekci "Osobní úkoly" (jen pro roli owner) — pouze zobrazení, neovlivňuje zápis dat
+let jeLukas = false; // true jen pro lukas.vit@v-pallets.cz — řídí viditelnost záložky Profitabilita
+let nakladky = [];
+let ukoly   = [];
+let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
+let zakaznici = []; // {id, nazev, materialy:[typ,...]}
+let sablony = []; // {id, nazev, popis, resitel, priorita, frekvence:'tydne'|'mesicne', den, aktivni, zadavatel, ts}
+
+// Živá data Kasa/Výkup/Opravy (jiné Firebase projekty, viz vpdb/evdb výše) a
+// sdílené prodejní ceny pro Profitabilitu — mimo dbReady gate, appka na ně nečeká.
+let pokladnaTx = [];
+let pokladnaAnchor = null;
+let pokladnaError = false;
+let vykupyData = [];
+let vykupyError = false;
+let opravyData = [];
+let opravyError = false;
+let sellPrices = {};
+let sellPricesLoaded = false;
+let sellPricesError = false;
+let profPeriod = 'today'; // today | week | month | all
+
+let weekOffset = 0;
+let selDay = todayStr();
+let nakFilter = 'all'; // all | nova | vyrizene
+let ukolFilter = 'moje'; // moje(sklad) / all(owner) / po_terminu
+let planWeekOffset = 0;
+let planSelDay = todayStr();
+
+/* ============ ŽIVÁ SYNCHRONIZACE (Firebase Firestore) ============
+   Nakládky/úkoly/plán práce/zákazníci se sdílí naživo mezi všemi, kdo appku
+   mají otevřenou (pilotní provoz — Lukáš a Ondřej). Každý záznam je vlastní
+   dokument, takže úpravy různých záznamů různými lidmi ve stejnou chvíli se
+   nepřepisují — poslední zápis vyhrává jen v rámci JEDNOHO záznamu. */
+let dbReady = false;
+const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false};
+function workPlanKeyFromDoc(id, data){ return (data.date||'')+'|'+(data.worker||''); }
+
+function maybeFinishLoading(){
+  if(dbReady) return;
+  if(Object.values(loaded).every(Boolean)){
+    dbReady = true;
+    document.getElementById('loading-overlay').style.display='none';
+    renderAll();
+  }
+}
+function seedIfEmpty(colName, seedFn, keyFn){
+  const rows = seedFn();
+  rows.forEach(r => fbSet(colName, keyFn(r), r));
+}
+// Pozn. (13.9.2026): dřív se tu při prázdné kolekci vždycky znovu vložila ukázková
+// data (seedIfEmpty/seedNakladky/seedUkoly/seedZakaznici/seedWorkPlan) — mělo to
+// nahodit appku napoprvé, ale platilo to natrvalo: i po smazání všech záznamů appka
+// při dalším načtení kolekci vyhodnotila jako "první spuštění" a ukázková data tam
+// nasypala znovu. Proto se smazané nakládky/úkoly po resetu appky vracely. Appka teď
+// běží naostro, takže se prázdná kolekce už znovu nezaplňuje — seed funkce zůstávají
+// v kódu nepoužité, jen pro referenci.
+onSnapshot(COL.nakladky, snap => {
+  nakladky = snap.docs.map(d=>d.data());
+  loaded.nakladky = true;
+  document.getElementById('offline-banner').style.display='none';
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.ukoly, snap => {
+  ukoly = snap.docs.map(d=>d.data());
+  loaded.ukoly = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.zakaznici, snap => {
+  zakaznici = snap.docs.map(d=>d.data());
+  loaded.zakaznici = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.ukoly_sablony, snap => {
+  sablony = snap.docs.map(d=>d.data());
+  loaded.sablony = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.workplan, snap => {
+  const wp = {};
+  snap.docs.forEach(d=>{ const data=d.data(); wp[workPlanKeyFromDoc(d.id,data)] = {typ:data.typ, vykladkaId:data.vykladkaId, poznamka:data.poznamka}; });
+  workPlan = wp;
+  loaded.workplan = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+/* ============ ŽIVÁ DATA: KASA / VÝKUP / OPRAVY (jiné Firebase projekty) ============
+   Čte se naživo z appek Pokladna + Výkup palet (projekt vykup-palet, přes vpdb) a
+   Evidence oprav (projekt evidence-oprav, přes evdb) pro záložky Přehled a Profitabilita.
+   Schválně mimo maybeFinishLoading/dbReady gate — appka se rozjede i bez těchto dat
+   (karty v Přehledu jen zůstanou "načítám"), protože jde o appky mimo tenhle projekt. */
+onSnapshot(collection(vpdb,'pokladna'), snap => {
+  pokladnaTx = snap.docs.map(d=>d.data());
+  pokladnaError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('pokladna', err); pokladnaError = true; if(dbReady) renderAll(); });
+
+onSnapshot(doc(vpdb,'pokladna_meta','anchor'), snap => {
+  pokladnaAnchor = snap.exists() ? snap.data() : null;
+  if (dbReady) renderAll();
+}, err => { console.error('pokladna_meta/anchor', err); pokladnaAnchor = null; if(dbReady) renderAll(); });
+
+onSnapshot(collection(vpdb,'vykupy'), snap => {
+  vykupyData = snap.docs.map(d=>d.data());
+  vykupyError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('vykupy', err); vykupyError = true; if(dbReady) renderAll(); });
+
+onSnapshot(collection(evdb,'opravy'), snap => {
+  opravyData = snap.docs.map(d=>d.data());
+  opravyError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('opravy', err); opravyError = true; if(dbReady) renderAll(); });
+
+onSnapshot(doc(vpdb,'sell_prices','config'), snap => {
+  sellPrices = snap.exists() ? (snap.data()||{}) : {};
+  sellPricesLoaded = true;
+  sellPricesError = false;
+  if (dbReady) renderAll();
+}, err => { console.error('sell_prices/config', err); sellPricesLoaded = true; sellPricesError = true; if(dbReady) renderAll(); });
+
+const ACTIVITY = {
+  trideni:{label:'Třídění', color:'var(--yellow)'},
+  oprava:{label:'Oprava', color:'var(--red)'},
+  volno:{label:'Volno', color:'var(--muted)'},
+  jine:{label:'Jiné', color:'var(--blue)'},
+};
+
+function seedWorkPlan(){
+  const k = (d,w) => dateToStr(d)+'|'+w;
+  const t = new Date();
+  const plan = {};
+  plan[k(t,'Radek')] = {typ:'trideni', vykladkaId:null, poznamka:'kamion — třídění EUR'};
+  plan[k(t,'Pavel')] = {typ:'trideni', vykladkaId:null, poznamka:'kamion — třídění EUR'};
+  plan[k(t,'Martin')] = {typ:'oprava', vykladkaId:null, poznamka:''};
+  return plan;
+}
+
+function seedNakladky(){
+  const t = new Date();
+  const iso = d => { const x=new Date(t); x.setDate(t.getDate()+d); return dateToStr(x); };
+  return [
+    {id:'n1', typ:'vykladka', datum:iso(0), cas:'09:00', partner:'Novák s.r.o.', poznamka:'Menší dodávka na vytřídění', stav:'nove',
+      ocekavano:'trideni',
+      material:[{typ:'EUR A', dlQty:40, realQty:null, tridirna:null, sklad:null, opravna:null}],
+      dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil:'Lukáš', ts:Date.now()},
+    {id:'n2', typ:'nakladka', datum:iso(0), cas:'13:30', partner:'Kovo Zlín a.s.', poznamka:'Nakládka hotového zboží', stav:'nove',
+      material:[{typ:'100x120', dlQty:60}], zalozil:'Ondřej', ts:Date.now()},
+    {id:'n3', typ:'vykladka', datum:iso(1), cas:'10:00', partner:'Palety Morava', poznamka:'2 kamiony, čeká se třídění', stav:'nove',
+      ocekavano:'trideni',
+      material:[{typ:'STD palety', dlQty:120, realQty:null, tridirna:null, sklad:null, opravna:null},{typ:'EUR mix', dlQty:30, realQty:null, tridirna:null, sklad:null, opravna:null}],
+      dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil:'Lukáš', ts:Date.now()},
+    {id:'n4', typ:'vykladka', datum:iso(0), cas:'11:00', partner:'Diton', poznamka:'Dle domluvy mají být palety už vytříděné, OK stav.', stav:'nove',
+      ocekavano:'ok',
+      material:[{typ:'EUR B', dlQty:60, realQty:null, tridirna:null, sklad:null, opravna:null}],
+      dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil:'Ondřej', ts:Date.now()},
+    {id:'n5', typ:'vykladka', datum:iso(-1), cas:'08:15', partner:'Dřevopal s.r.o.', poznamka:'', stav:'vyrizene',
+      ocekavano:'ok',
+      material:[{typ:'EUR A', dlQty:50, realQty:47, tridirna:20, sklad:15, opravna:12}],
+      dlFoto:'demo', fotoSklad:['demo','demo'], fotoTridirna:['demo','demo','demo','demo','demo','demo'], fotoOpravna:['demo','demo'],
+      neshodaKomentar:'Dorazily i poškozené kusy, ačkoliv mělo být dle domluvy vše OK. Vyfoceno pro reklamaci u dodavatele.', zalozil:'Ondřej', ts:Date.now()-86400000},
+  ];
+}
+function seedZakaznici(){
+  return [
+    {id:'z1', nazev:'Novák s.r.o.', materialy:['EUR A']},
+    {id:'z2', nazev:'Kovo Zlín a.s.', materialy:['100x120']},
+    {id:'z3', nazev:'Palety Morava', materialy:['STD palety','EUR mix']},
+    {id:'z4', nazev:'Diton', materialy:['EUR B']},
+    {id:'z5', nazev:'Dřevopal s.r.o.', materialy:['EUR A']},
+  ];
+}
+function seedUkoly(){
+  const past = Date.now()-2*86400000;
+  return [
+    {id:'u1', nazev:'Objednat nové vidle na VZV', popis:'Staré jsou ohnuté, hrozí poškození palet při nakládce.', zadavatel:'Lukáš', resitel:'Ondřej', termin:dateToStr(new Date(Date.now()+2*86400000)), priorita:'stredni', stav:'nove', komentare:[], foto:null, ts:Date.now()},
+    {id:'u2', nazev:'Domluvit svoz od Kovo Zlín', popis:'', zadavatel:'Ondřej', resitel:'Ondřej', termin:dateToStr(new Date(past)), priorita:'vysoka', stav:'nove', komentare:[{autor:'Lukáš',text:'Urguj to, potřebujeme to vyřešit dnes.',ts:Date.now()-3600000}], foto:null, ts:past},
+    {id:'u3', nazev:'Rozbité kolo na paletovém vozíku', popis:'Vozík č.2 v opravně, nejde s ním pořádně jezdit.', zadavatel:'Martin', resitel:'Lukáš', termin:dateToStr(new Date(Date.now()+86400000)), priorita:'vysoka', stav:'nove', komentare:[], foto:null, ts:Date.now()-7200000},
+    {id:'u4', nazev:'Doplnit spotřební materiál do dílny', popis:'Hřebíky, lepidlo.', zadavatel:'Lukáš', resitel:'Martin', termin:dateToStr(new Date()), priorita:'nizka', stav:'vyrizene', komentare:[], foto:null, ts:Date.now()-90000000},
+  ];
+}
+
+/* ============ UTILS ============ */
+function pad2(n){return String(n).padStart(2,'0');}
+function dateToStr(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());}
+function todayStr(){return dateToStr(new Date());}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r;}
+function mondayOf(d){const day=(d.getDay()+6)%7;return addDays(d,-day);}
+function fmtDate(iso){const [y,m,d]=iso.split('-');return d+'.'+m+'.';}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2200);}
+function showInfoSheet(title, html){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${title}</div>
+    <div style="font-size:14px;line-height:1.6;color:var(--ink);margin-top:10px">${html}</div>
+    <button class="btn btn-primary" onclick="closeSheet()" style="margin-top:18px">Rozumím</button>
+  `;
+  openSheet();
+}
+function isOverdue(u){ return u.stav!=='vyrizene' && u.termin < todayStr(); }
+function uid(){return Date.now()+'-'+Math.random().toString(36).substr(2,5);}
+
+/* ============ OPAKUJÍCÍ SE ÚKOLY (šablony → automaticky generované záznamy v "ukoly") ============
+   Šablona popisuje pravidelnost (týdně v konkrétní den / měsíčně v konkrétní den).
+   Appka při každém načtení dat zkontroluje, jestli pro aktuální období (týden/měsíc)
+   už existuje vygenerovaný úkol z dané šablony — pokud ne, vytvoří ho. ID vygenerovaného
+   úkolu je odvozené (šablonaId+období), takže i když appku mají otevřenou dva lidi
+   najednou, oba se pokusí zapsat stejný dokument, ne dva duplicitní záznamy. */
+const DEN_TYDNE_NAZEV = ['','Pondělí','Úterý','Středa','Čtvrtek','Pátek','Sobota','Neděle']; // index 1-7 (ISO, 1=Po)
+function sablonaObdobi(s, d){
+  if(s.frekvence==='mesicne') return d.getFullYear()+'-'+pad2(d.getMonth()+1);
+  return dateToStr(mondayOf(d)); // týdně: datum pondělí toho týdne = klíč období
+}
+function sablonaTermin(s, d){
+  if(s.frekvence==='mesicne'){
+    const rok=d.getFullYear(), mesic=d.getMonth();
+    const posledniDen = new Date(rok, mesic+1, 0).getDate();
+    return dateToStr(new Date(rok, mesic, Math.min(s.den||1, posledniDen)));
+  }
+  return dateToStr(addDays(mondayOf(d), (s.den||5)-1));
+}
+function generujOpakujiciUkoly(){
+  if(!loaded.ukoly || !loaded.sablony) return;
+  const dnes = new Date();
+  sablony.filter(s=>s.aktivni!==false).forEach(s=>{
+    const obdobi = sablonaObdobi(s, dnes);
+    if(ukoly.some(u=>u.sablonaId===s.id && u.obdobi===obdobi)) return;
+    const novy = {
+      id: s.id+'__'+obdobi,
+      nazev: s.nazev, popis: s.popis||'',
+      zadavatel: s.zadavatel||'Systém', resitel: s.resitel,
+      termin: sablonaTermin(s, dnes), priorita: s.priorita||'stredni',
+      stav:'nove', komentare:[], foto:null, ts:Date.now(),
+      sablonaId: s.id, obdobi,
+    };
+    ukoly.unshift(novy);
+    fbSet('ukoly', novy.id, novy);
+  });
+}
+function workerColor(name){const w=WORKERS.find(w=>w.name===name); return w?w.color:'#999';}
+function docSizeOk(obj, limitBytes){
+  limitBytes = limitBytes || 900000; // bezpečná rezerva pod 1 MiB limitem Firestore dokumentu
+  try { return JSON.stringify(obj).length < limitBytes; } catch(e){ return true; }
+}
+function compressImage(file, maxDim, quality){
+  maxDim = maxDim || 1000; quality = quality || 0.55;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+        else if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ============ FOTKY NA GOOGLE DRIVE ============
+   Apps Script Web App jako prostředník — appka nezná žádný servisní klíč,
+   jen veřejnou URL nasazeného skriptu. Návrh viz claude/foto_uloziste_google_drive_navrh.md
+   (projekt "Interní appky - Palety Vít"). Dokud sem není vložená skutečná URL nasazení,
+   appka fotky ukládá při ukládání záznamu starým způsobem (dataURL přímo v dokumentu) —
+   nic se nerozbije, jen se Disk nevyužije. */
+const DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzpLsiFBu1OKJ99UYw4cyjVphgjwXicyKYAAIXW0vl_LF7fTBuNbXSsXMjSZZBvQOzp/exec';
+
+function driveUploadEnabled(){ return !!DRIVE_UPLOAD_URL; }
+
+function sanitizeFileNamePart(s){
+  return (s||'').replace(/[\/\\:*?"<>|]/g,'').trim();
+}
+function driveSlozkaNazev(datum, popis){
+  return `${datum} - ${sanitizeFileNamePart(popis) || '(bez názvu)'}`;
+}
+// Složka pro nakládku/vykládku: "Firma - datum" (dle zadání 12.9.2026) — na rozdíl od
+// driveSlozkaNazev výš (pořád used pro úkoly), kde zůstává pořadí datum - popis.
+function driveSlozkaNazevZakazka(partner, datum){
+  return `${sanitizeFileNamePart(partner) || '(bez názvu)'} - ${datum}`;
+}
+// Názvy fotek podle typu (dle zadání 12.9.2026) — místo kódů (dl, sklad…) plný český název.
+const FOTO_TYP_NAZEV = { dl:'dodací list', sklad:'dobré palety', tridirna:'k třídění', opravna:'k opravě' };
+function fotoTypNazev(typBase, poradi){
+  const zaklad = FOTO_TYP_NAZEV[typBase] || typBase;
+  return poradi>1 ? `${zaklad} ${poradi}` : zaklad;
+}
+function uploadFotoNaDrive(dataUrl, datum, slozka, typNazev){
+  const filename = `${datum}_${sanitizeFileNamePart(typNazev)}.jpg`;
+  return fetch(DRIVE_UPLOAD_URL, {
+    method:'POST',
+    body: JSON.stringify({datum, slozka, typFoto:typNazev, dataUrl, filename})
+  }).then(r=>r.json());
+}
+function smazatFotoZDrive(driveFileId){
+  if(!driveFileId || !driveUploadEnabled()) return Promise.resolve();
+  return fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'smazat', driveFileId})}).catch(()=>{});
+}
+
+/* ============ SOUKROMÝ NÁHLED ULOŽENÝCH FOTEK ============
+   Appka fotky po uložení dřív vůbec nezobrazovala (jen odkaz "na Disku") — teď
+   umí dotáhnout reálný náhled přes stejný Apps Script Web App (soukromý, běží
+   pod Lukášovým účtem), akcí 'nahled'. Fronta omezuje počet souběžných
+   požadavků (Apps Script má limit na počet paralelních běhů na účet), cache
+   drží výsledky, aby se stejná fotka nenačítala opakovaně. */
+const fotoNahledCache = {}; // driveFileId -> Promise<dataUrl|null>
+let fotoNahledAktivnich = 0;
+const FOTO_NAHLED_MAX_SOUBEZNE = 3;
+const fotoNahledFronta = [];
+function fotoNahledFrontaTick(){
+  while(fotoNahledAktivnich < FOTO_NAHLED_MAX_SOUBEZNE && fotoNahledFronta.length){
+    fotoNahledAktivnich++;
+    fotoNahledFronta.shift()();
+  }
+}
+function nacistFotoNahled(driveFileId){
+  if(!driveFileId || !driveUploadEnabled()) return Promise.resolve(null);
+  if(fotoNahledCache[driveFileId]) return fotoNahledCache[driveFileId];
+  const p = new Promise(resolve=>{
+    fotoNahledFronta.push(()=>{
+      fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'nahled', driveFileId})})
+        .then(r=>r.json())
+        .then(res=>resolve(res && res.dataUrl ? res.dataUrl : null))
+        .catch(()=>resolve(null))
+        .finally(()=>{ fotoNahledAktivnich--; fotoNahledFrontaTick(); });
+    });
+  });
+  fotoNahledCache[driveFileId] = p;
+  fotoNahledFrontaTick();
+  return p;
+}
+// scopeEl: element, ve kterém se právě vykreslily placeholdery <div data-foto-lazy="ID">
+// s vnořeným <div class="photo-thumb-loading">. Po dotažení náhledu se placeholder
+// nahradí <img>; při selhání (appka offline, smazáno na Disku…) se ukáže náhradní
+// ikonka se jménem souboru, aby appka nezůstala navěky "načítám".
+function hydrateFotoLazy(scopeEl){
+  if(!scopeEl) return;
+  scopeEl.querySelectorAll('[data-foto-lazy]').forEach(el=>{
+    const id = el.getAttribute('data-foto-lazy');
+    if(!id || el.dataset.fotoLazyBusy) return;
+    el.dataset.fotoLazyBusy = '1';
+    nacistFotoNahled(id).then(dataUrl=>{
+      const ph = el.querySelector('.photo-thumb-loading');
+      if(dataUrl){
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        if(ph) ph.replaceWith(img); else el.prepend(img);
+      } else if(ph){
+        const fn = el.getAttribute('data-foto-fn') || '';
+        ph.outerHTML = fn
+          ? `<div style="font-size:20px">📄</div><div class="hint" style="margin:2px 0 0">${escapeHtml(fn)}</div>`
+          : `<div class="hint" style="margin:0">⚠ náhled nedostupný</div>`;
+      }
+      el.removeAttribute('data-foto-lazy');
+    });
+  });
+}
+// p může být: null, 'demo' (ukázková data), starý base64 string (záznamy před zavedením Drive),
+// nebo nový objekt {dataUrl?, driveFileId, url, filename} — dataUrl jen dočasně, po dobu editace.
+function photoPreviewSrc(p){
+  if(!p) return null;
+  if(p==='demo') return demoPhotoDataUri();
+  if(typeof p === 'string') return p;
+  if(p.dataUrl) return p.dataUrl;
+  return null; // uložený záznam bez dataUrl — appka fotku dál nezobrazuje, jen odkaz na Disk
+}
+function photoFilenameOf(p){
+  return (p && typeof p==='object' && p.filename) ? p.filename : null;
+}
+function photoBoxInnerHtml(p, placeholderHtml){
+  const src = photoPreviewSrc(p);
+  if(src) return `<img src="${src}">`;
+  const fid = p && typeof p==='object' && p.driveFileId;
+  if(fid){
+    const fn = photoFilenameOf(p) || '';
+    return `<div data-foto-lazy="${fid}" data-foto-fn="${escapeAttr(fn)}"><div class="photo-thumb-loading">⏳ Načítám náhled…</div></div>`;
+  }
+  const fn = photoFilenameOf(p);
+  if(fn) return `<div style="font-size:28px">📄</div><div>${escapeHtml(fn)}</div><div class="hint">✓ na Disku</div>`;
+  return placeholderHtml;
+}
+// true = fotka je připravená k uložení (hotová/legacy/prázdná), false = ještě čeká na dokončení uploadu
+function fotoJeNahotova(p){
+  return !(p && typeof p==='object' && !p.driveFileId);
+}
+function stripPendingAndDataUrl(p){
+  if(p && typeof p==='object') return {driveFileId:p.driveFileId, url:p.url, filename:p.filename};
+  return p;
+}
+
+/* ============ PŘIHLÁŠENÍ / ROLE ============
+   Role appky (majitel/skladník) a jméno se nastaví až tady, po úspěšném
+   přihlášení — viz onAuthStateChanged níže. Ruční přepínač Majitel/Martin byl
+   zrušený (nic nechránil, kdokoli si mohl appku přepnout na Majitele). */
+function nastavRoliPoPrihlaseni(osoba){
+  role = osoba.role; person = osoba.name; jeLukas = !!osoba.jeLukas;
+  osobniView = null; // po (opětovném) přihlášení vždy zpět na "moje vlastní úkoly"
+  document.getElementById('user-badge').style.display = '';
+  document.getElementById('user-badge-name').textContent = osoba.name;
+  document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
+  // Skladník nevidí souhrnnou záložku Přehled (finanční čísla firmy) — jen svoje úkoly a nakládky.
+  const tabPrehled = document.getElementById('tab-prehled');
+  tabPrehled.style.display = (role==='owner') ? '' : 'none';
+  if (role==='sklad' && activeScreen()==='prehled'){
+    switchTab('nakladky', document.getElementById('tab-nakladky'));
+  }
+  // Profitabilita je jen pro Lukáše — i kdyby se do ní někdo jiný dostal starým
+  // odkazem/historií prohlížeče, přesměrujeme ho pryč hned po přihlášení.
+  document.getElementById('tab-profitabilita').style.display = jeLukas ? '' : 'none';
+  if (!jeLukas && activeScreen()==='profitabilita'){
+    switchTab('prehled', document.getElementById('tab-prehled'));
+  }
+  if (dbReady) renderAll();
+}
+
+function doLogout(){
+  signOut(auth);
+}
+
+document.getElementById('login-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const heslo = document.getElementById('login-heslo').value;
+  const errEl = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  errEl.textContent = ''; btn.disabled = true; btn.textContent = 'Přihlašuji…';
+  signInWithEmailAndPassword(auth, email, heslo).catch(function(err){
+    console.error('login', err);
+    errEl.textContent = (err && (err.code==='auth/invalid-credential' || err.code==='auth/wrong-password' || err.code==='auth/user-not-found'))
+      ? 'Nesprávný e-mail nebo heslo.' : 'Přihlášení se nepovedlo, zkus to znovu.';
+  }).finally(function(){
+    btn.disabled = false; btn.textContent = 'Přihlásit';
+  });
+});
+
+document.getElementById('forgot-btn').addEventListener('click', function(){
+  const email = document.getElementById('login-email').value.trim();
+  const errEl = document.getElementById('login-err');
+  if (!email){ errEl.textContent = 'Napiš nejdřív svůj e-mail nahoře.'; errEl.style.color = 'var(--red)'; return; }
+  sendPasswordResetEmail(auth, email).then(function(){
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = 'Odkaz na nastavení hesla poslán na ' + email + '.';
+  }).catch(function(err){
+    console.error('reset', err);
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = 'Nepovedlo se poslat e-mail — zkontroluj, že je adresa správně.';
+  });
+});
+
+onAuthStateChanged(auth, function(user){
+  const loginOverlay = document.getElementById('login-overlay');
+  if (!user){
+    loginOverlay.style.display = 'flex';
+    document.getElementById('user-badge').style.display = 'none';
+    return;
+  }
+  const osoba = PERSON_BY_EMAIL[(user.email||'').toLowerCase()];
+  if (!osoba){
+    document.getElementById('login-err').textContent = 'Tenhle účet nemá v appce přiřazenou roli — ozvi se Lukášovi.';
+    loginOverlay.style.display = 'flex';
+    signOut(auth);
+    return;
+  }
+  loginOverlay.style.display = 'none';
+  nastavRoliPoPrihlaseni(osoba);
+});
+
+function setPerson(p){
+  osobniView = p; // jen přepnutí zobrazení v "Osobní úkoly" — neovlivňuje Založil/provedl
+  renderPrehled();
+}
+
+/* ============ TABS ============ */
+function switchTab(id,btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('screen-'+id).classList.add('on');
+  btn.classList.add('on');
+  renderAll();
+}
+function activeScreen(){ return document.querySelector('.screen.on').id.replace('screen-',''); }
+
+/* ============ RENDER: PŘEHLED (denní souhrn firmy) ============ */
+function computePrehledData(){
+  const now = new Date();
+  const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isToday = ts => { const t = new Date(ts); return !isNaN(t) && t >= today0; };
+
+  // --- KASA (appka Pokladna, kolekce pokladna+pokladna_meta, projekt vykup-palet) ---
+  // Stejná logika jako appka Pokladna sama (renderBalances): zůstatek = ukotvená
+  // hodnota + oficiální příjmy/výdaje od data ukotvení − výkupy od data ukotvení
+  // (výkupy se platí z oficiální kasy). Neoficiální kasa se do zůstatku nepočítá.
+  let oficialniZustatek = null, ukotvenoDatum = null;
+  let dnesPrijem = 0, dnesVydaj = 0, neoficialniPrijem = 0, neoficialniVydaj = 0;
+  if (pokladnaAnchor && pokladnaAnchor.date){
+    let bal = Number(pokladnaAnchor.official) || 0;
+    pokladnaTx.forEach(t=>{
+      if(!t.ts || t.ts < pokladnaAnchor.date) return;
+      const amt = Number(t.amt)||0;
+      if(t.kasa!=='unofficial'){ if(t.typ==='income') bal+=amt; else bal-=amt; }
+    });
+    vykupyData.forEach(v=>{
+      if(!v.ts || v.ts < pokladnaAnchor.date) return;
+      bal -= Number(v.total)||0;
+    });
+    oficialniZustatek = bal;
+    const [ay,am,ad] = pokladnaAnchor.date.split('-');
+    ukotvenoDatum = ad+'. '+am+'. '+ay;
+  }
+  pokladnaTx.forEach(t=>{
+    if(!t.ts || !isToday(t.ts)) return;
+    const amt = Number(t.amt)||0;
+    if(t.kasa==='unofficial'){ if(t.typ==='income') neoficialniPrijem+=amt; else neoficialniVydaj+=amt; }
+    else { if(t.typ==='income') dnesPrijem+=amt; else dnesVydaj+=amt; }
+  });
+  vykupyData.forEach(v=>{ if(v.ts && isToday(v.ts)) dnesVydaj += Number(v.total)||0; });
+
+  // --- VÝKUP (appka Výkup palet, kolekce vykupy, projekt vykup-palet) ---
+  const vykupToday = vykupyData.filter(v=>v.ts && isToday(v.ts));
+  const vykupPolozkyMap = {};
+  vykupToday.forEach(v=>(v.items||[]).forEach(it=>{
+    vykupPolozkyMap[it.n] = (vykupPolozkyMap[it.n]||0) + (Number(it.ks)||0);
+  }));
+
+  // --- OPRAVY (appka Evidence oprav, kolekce opravy, projekt evidence-oprav) ---
+  const todayStrVal = todayStr();
+  const opravyToday = opravyData.filter(o=>o.date===todayStrVal);
+  const delnikMap = {}, typMap = {};
+  opravyToday.forEach(o=>{
+    const jm = o.workerName || ('Pracovník #'+(o.worker??'?'));
+    delnikMap[jm] = (delnikMap[jm]||0) + (Number(o.qty)||0);
+    typMap[o.palletType] = (typMap[o.palletType]||0) + (Number(o.qty)||0);
+  });
+
+  return {
+    kasa: { oficialniZustatek, ukotvenoDatum, dnesPrijem, dnesVydaj, neoficialniPrijem, neoficialniVydaj, chyba: pokladnaError },
+    vykup: {
+      celkemKc: vykupToday.reduce((s,v)=>s+(Number(v.total)||0),0),
+      pocetZaznamu: vykupToday.length,
+      polozky: Object.entries(vykupPolozkyMap).map(([n,ks])=>({n,ks})).sort((a,b)=>b.ks-a.ks),
+      chyba: vykupyError,
+    },
+    opravy: {
+      celkemKs: opravyToday.reduce((s,o)=>s+(Number(o.qty)||0),0),
+      pocetZaznamu: opravyToday.length,
+      podleDelnika: Object.entries(delnikMap).map(([n,ks])=>({n,ks})).sort((a,b)=>b.ks-a.ks),
+      podleTypu: Object.entries(typMap).map(([n,ks])=>({n,ks})).sort((a,b)=>b.ks-a.ks),
+      chyba: opravyError,
+    },
+  };
+}
+
+function renderPrehled(){
+  const d = computePrehledData();
+  const kc = n => Math.round(n).toLocaleString('cs-CZ')+' Kč';
+
+  const liveFull = `<strong>Kasa, výkup a opravy</strong> se teď načítají naživo přímo z appek Pokladna, Výkup palet a Evidence oprav — stejně jako Nakládky, úkoly a plán práce níže. Vidí je v reálném čase Lukáš i Ondra.`;
+  document.getElementById('prehled-snap-note').setAttribute('onclick', "showInfoSheet('📡 Živá data', " + JSON.stringify(liveFull) + ")");
+  document.getElementById('prehled-snap-note').innerHTML =
+    `📡 Kasa/výkup/opravy: živě z appek <span class="snap-note-more">Info ›</span>`;
+
+  if (d.kasa.oficialniZustatek===null){
+    document.getElementById('prehled-kasa').innerHTML = `
+      <div class="ov-big" style="font-size:20px">Čeká na ukotvení</div>
+      <div class="ov-sub">oficiální zůstatek zatím není ukotvený k reálnému stavu kasy (appka Pokladna)</div>
+      ${d.kasa.chyba?'<div class="ov-flag">⚠ Kasu se nepodařilo načíst živě (výpadek připojení k appce Pokladna).</div>':''}
+    `;
+  } else {
+    document.getElementById('prehled-kasa').innerHTML = `
+      <div class="ov-big" style="color:${d.kasa.oficialniZustatek>=0?'var(--green)':'var(--red)'}">${kc(d.kasa.oficialniZustatek)}</div>
+      <div class="ov-sub">oficiální zůstatek · ukotveno ${d.kasa.ukotvenoDatum}</div>
+      <div class="ov-mini-row">
+        <div class="ov-mini"><div class="ov-mini-lbl">Dnešní příjem</div><div class="ov-mini-val ov-plus">+${kc(d.kasa.dnesPrijem)}</div></div>
+        <div class="ov-mini"><div class="ov-mini-lbl">Dnešní výdaj</div><div class="ov-mini-val ov-minus">−${kc(d.kasa.dnesVydaj)}</div></div>
+      </div>
+      <div class="ov-mini-row">
+        <div class="ov-mini" style="background:#fdf0e8"><div class="ov-mini-lbl" style="color:var(--yellow)">Neoficiální dnes</div><div class="ov-mini-val">+${kc(d.kasa.neoficialniPrijem)} / −${kc(d.kasa.neoficialniVydaj)}</div></div>
+      </div>
+      ${d.kasa.chyba?'<div class="ov-flag">⚠ Kasu se nepodařilo načíst živě (výpadek připojení k appce Pokladna).</div>':''}
+    `;
+  }
+
+  document.getElementById('prehled-vykup').innerHTML = `
+    <div class="ov-big">${kc(d.vykup.celkemKc)}</div>
+    <div class="ov-sub">${d.vykup.pocetZaznamu} výkupy dnes</div>
+    <div class="ov-breakdown">
+      ${d.vykup.polozky.length ? d.vykup.polozky.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('') : '<div class="empty">Dnes zatím žádný výkup.</div>'}
+    </div>
+    ${d.vykup.chyba?'<div class="ov-flag">⚠ Výkup se nepodařilo načíst živě (výpadek připojení k appce Výkup palet).</div>':''}
+  `;
+
+  const neznamyDelnik = d.opravy.podleDelnika.find(p=>p.n.startsWith('Pracovník #'));
+  document.getElementById('prehled-opravy').innerHTML = `
+    <div class="ov-big">${d.opravy.celkemKs} ks</div>
+    <div class="ov-sub">${d.opravy.pocetZaznamu} záznamů dnes</div>
+    <div class="ov-day-hdr">Pracovníci</div>
+    <div class="ov-breakdown">
+      ${d.opravy.podleDelnika.length ? d.opravy.podleDelnika.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('') : '<div class="empty">Dnes zatím žádná oprava.</div>'}
+    </div>
+    <div class="ov-day-hdr">Typy palet</div>
+    <div class="ov-breakdown">
+      ${d.opravy.podleTypu.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${p.ks} ks</span></div>`).join('')}
+    </div>
+    ${neznamyDelnik?`<div class="ov-flag">⚠ V datech je pracovník uvedený jen jako "${neznamyDelnik.n}" (bez jména) — ${neznamyDelnik.ks} ks dnes.</div>`:''}
+    ${d.opravy.chyba?'<div class="ov-flag">⚠ Opravy se nepodařilo načíst živě (výpadek připojení k appce Evidence oprav).</div>':''}
+  `;
+
+  document.getElementById('prehled-trideni').innerHTML = `
+    <div style="font-size:13px;color:var(--dim);line-height:1.5;font-style:italic">Zatím nesledováno — appka Výkazy práce není dodělaná a appka Třídění palet ještě neexistuje. Číslo tu bude, až některá z nich vznikne (viz master seznam produktů, otevřený bod).</div>
+  `;
+
+  const today = todayStr();
+  const tomorrow = dateToStr(addDays(new Date(),1));
+  const rowHtml = n => {
+    const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
+    return `<div class="item" style="margin-bottom:6px" onclick="switchToNakladka('${n.id}')">
+      <div class="item-dot" style="background:${n.typ==='vykladka'?'#4a9eff':'#e67e22'}"></div>
+      <div class="item-body">
+        <div class="item-title">${n.cas} · ${n.typ==='vykladka'?'Vykládka':'Nakládka'} — ${n.partner}
+          <span class="pill ${n.stav==='vyrizene'?'pill-done':'pill-new'}">${n.stav==='vyrizene'?'Vyřízeno':'Nové'}</span>
+        </div>
+        <div class="item-meta">${matSum}</div>
+      </div>
+    </div>`;
+  };
+  const dayBlock = (typ) => {
+    const todayList = nakladky.filter(n=>n.datum===today && n.typ===typ).sort((a,b)=>a.cas.localeCompare(b.cas));
+    const tomorrowList = nakladky.filter(n=>n.datum===tomorrow && n.typ===typ).sort((a,b)=>a.cas.localeCompare(b.cas));
+    const nicDnes = typ==='vykladka' ? 'Dnes žádná vykládka.' : 'Dnes žádná nakládka.';
+    const nicZitra = typ==='vykladka' ? 'Zítra zatím žádná vykládka.' : 'Zítra zatím žádná nakládka.';
+    let h = `<div class="ov-day-hdr">Dnes, ${fmtDate(today)}</div>`;
+    h += todayList.length ? todayList.map(rowHtml).join('') : `<div class="empty">${nicDnes}</div>`;
+    h += `<div class="ov-day-hdr">Zítra, ${fmtDate(tomorrow)}</div>`;
+    h += tomorrowList.length ? tomorrowList.map(rowHtml).join('') : `<div class="empty">${nicZitra}</div>`;
+    return h;
+  };
+  document.getElementById('prehled-nakladky').innerHTML = dayBlock('nakladka');
+  document.getElementById('prehled-vykladky').innerHTML = dayBlock('vykladka');
+
+  const showPersonSwitch = role==='owner';
+  const viewPerson = showPersonSwitch ? (osobniView || person) : 'Martin';
+  const myTasks = ukoly.filter(u=>u.stav!=='vyrizene' && u.resitel===viewPerson);
+  myTasks.sort((a,b)=> (isOverdue(b)-isOverdue(a)) || a.termin.localeCompare(b.termin));
+  let osobniHtml = '';
+  if(showPersonSwitch){
+    osobniHtml += `<div class="seg-pill" style="margin-bottom:10px">
+      <button class="seg-pill-btn ${viewPerson==='Lukáš'?'on':''}" onclick="setPerson('Lukáš')">Lukáš</button>
+      <button class="seg-pill-btn ${viewPerson==='Ondřej'?'on':''}" onclick="setPerson('Ondřej')">Ondřej</button>
+      <button class="seg-pill-btn ${viewPerson==='Martin'?'on':''}" onclick="setPerson('Martin')">Martin</button>
+    </div>`;
+  }
+  if(!myTasks.length){
+    osobniHtml += `<div class="empty">Žádné otevřené úkoly.</div>`;
+  } else {
+    osobniHtml += myTasks.map(u=>{
+      const late = isOverdue(u);
+      return `<div class="item" style="margin-bottom:6px" onclick="openUkol('${u.id}')">
+        <div class="item-dot" style="background:${late?'var(--red)':'var(--blue)'}"></div>
+        <div class="item-body">
+          <div class="item-title">${escapeHtml(u.nazev)} ${u.sablonaId?'<span class="pill pill-recurring">🔁 opakuje se</span>':''} ${late?'<span class="pill pill-late">Po termínu</span>':''}</div>
+          <div class="item-meta">od ${u.zadavatel} · termín ${fmtDate(u.termin)}${u.komentare.length?' · 💬 '+u.komentare.length:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('prehled-osobni').innerHTML = osobniHtml;
+
+  document.getElementById('fab-wrap').style.display='none';
+}
+
+/* ============ RENDER: PROFITABILITA (jen Lukáš) ============
+   Zisk z výkupů = (prodejní cena/ks − výkupní cena/ks − fixní náklad/ks) × ks,
+   sečteno přes položky výkupů (appka Výkup palet). Fixní náklad je 68 Kč/ks u
+   poškozených typů, jinak 13 Kč/ks — stejná logika jako appka Palety (Rentabilita).
+   Prodejní ceny jsou sdílené a editovatelné jen tady, uložené ve Firestore
+   (projekt vykup-palet, kolekce sell_prices/config) — vyžaduje vlastní pravidlo. */
+function vykupPalletByName(n){ return VYKUP_PALLETS.find(p=>p.n===n) || null; }
+
+function setProfPeriod(p){ profPeriod = p; renderProfitabilita(); }
+
+function profFilterRecords(){
+  const now = new Date();
+  let from = null;
+  if(profPeriod==='today'){ from = new Date(now.getFullYear(),now.getMonth(),now.getDate()); }
+  else if(profPeriod==='week'){ from = mondayOf(now); from.setHours(0,0,0,0); }
+  else if(profPeriod==='month'){ from = new Date(now.getFullYear(),now.getMonth(),1); }
+  return vykupyData.filter(v=>{
+    if(!v.ts) return false;
+    if(!from) return true;
+    return new Date(v.ts) >= from;
+  });
+}
+
+function profCalc(){
+  const records = profFilterRecords();
+  let profit = 0, ksTotal = 0, unknownKs = 0;
+  const perType = {};
+  records.forEach(v=>(v.items||[]).forEach(it=>{
+    const pallet = vykupPalletByName(it.n);
+    const ks = Number(it.ks)||0;
+    ksTotal += ks;
+    if(!pallet){ unknownKs += ks; return; }
+    const isDmg = VYKUP_DAMAGED_IDS.includes(pallet.id);
+    const fixCost = isDmg ? 68 : 13;
+    const sellPrice = Number(sellPrices[pallet.id]) || 0;
+    const purchCost = Number(it.pr)||0;
+    const rowProfit = (sellPrice - purchCost - fixCost) * ks;
+    profit += rowProfit;
+    perType[pallet.id] = perType[pallet.id] || {n:pallet.n, ks:0, profit:0};
+    perType[pallet.id].ks += ks;
+    perType[pallet.id].profit += rowProfit;
+  }));
+  return { profit, ksTotal, unknownKs, records: records.length, perType: Object.values(perType).sort((a,b)=>b.ks-a.ks) };
+}
+
+function renderProfitabilita(){
+  const kc = n => Math.round(n).toLocaleString('cs-CZ')+' Kč';
+
+  document.getElementById('prof-period-chips').innerHTML = `
+    <button class="chip${profPeriod==='today'?' on':''}" onclick="setProfPeriod('today')">Dnes</button>
+    <button class="chip${profPeriod==='week'?' on':''}" onclick="setProfPeriod('week')">Tento týden</button>
+    <button class="chip${profPeriod==='month'?' on':''}" onclick="setProfPeriod('month')">Tento měsíc</button>
+    <button class="chip${profPeriod==='all'?' on':''}" onclick="setProfPeriod('all')">Vše</button>
+  `;
+
+  if(!sellPricesLoaded){
+    document.getElementById('prof-result').innerHTML = `<div class="empty">Načítám ceny…</div>`;
+  } else {
+    const c = profCalc();
+    document.getElementById('prof-result').innerHTML = `
+      <div class="profit-card">
+        <div>
+          <div class="profit-lbl">Čistý zisk</div>
+          <div class="profit-val ${c.profit>=0?'pos':'neg'}">${kc(c.profit)}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#ccc">${c.records} výkupy<br>${c.ksTotal} ks</div>
+      </div>
+      <div class="ov-breakdown">
+        ${c.perType.length? c.perType.map(p=>`<div class="ov-brow"><span>${p.n}</span><span class="ov-brow-val">${kc(p.profit)} (${p.ks} ks)</span></div>`).join('') : '<div class="empty">V tomhle období žádný výkup.</div>'}
+      </div>
+      ${c.unknownKs?`<div class="ov-flag">⚠ ${c.unknownKs} ks nešlo přiřadit ke známému typu palety — nezapočítáno do zisku.</div>`:''}
+      ${vykupyError?'<div class="ov-flag">⚠ Výkupy se nepodařilo načíst živě (výpadek připojení k appce Výkup palet).</div>':''}
+    `;
+  }
+
+  let priceNote = '';
+  if(sellPricesError){
+    priceNote = `<div class="ov-flag">⚠ Uložení prodejní ceny se nepovedlo — v projektu vykup-palet chybí Firestore pravidlo pro kolekci <code>sell_prices</code>. Přidej v konzoli Firebase (stejně jako u tridici_protokoly): <code>match /sell_prices/{doc} { allow read, write: if true; }</code></div>`;
+  }
+  document.getElementById('prof-note').innerHTML = `<div style="font-size:12px;color:var(--dim);margin-bottom:8px">Prodejní ceny za kus jsou sdílené a používají se pro výpočet zisku výše. Vidí a upravuje je jen tahle záložka.</div>${priceNote}`;
+
+  document.getElementById('prof-prices').innerHTML = VYKUP_PALLETS.map(p=>{
+    const isDmg = VYKUP_DAMAGED_IDS.includes(p.id);
+    const val = sellPrices[p.id]!=null ? sellPrices[p.id] : '';
+    return `<div class="rent-row">
+      <div class="rent-name">${p.n}${isDmg?' <span style="color:var(--dim);font-weight:400">(poškozená)</span>':''}</div>
+      <input class="rent-inp" type="number" inputmode="decimal" value="${val}" placeholder="0" onchange="saveSellPriceProf('${p.id}',this.value)">
+    </div>`;
+  }).join('');
+}
+
+function saveSellPriceProf(id, val){
+  const n = Number(val)||0;
+  sellPrices[id] = n;
+  setDoc(doc(vpdb,'sell_prices','config'), {[id]: n}, {merge:true}).then(()=>{
+    sellPricesError = false;
+  }).catch(e=>{
+    console.error('saveSellPriceProf', e);
+    sellPricesError = true;
+    renderProfitabilita();
+  });
+}
+
+function switchToNakladka(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('screen-nakladky').classList.add('on');
+  document.getElementById('tab-nakladky').classList.add('on');
+  renderNakladky();
+  openNakladka(id);
+}
+
+/* ============ RENDER: NAKLÁDKY ============ */
+function weekNav(dir){ weekOffset+=dir; renderNakladky(); }
+
+function renderWeekStrip(){
+  const monday = addDays(mondayOf(new Date()), weekOffset*7);
+  const days = [...Array(7)].map((_,i)=>addDays(monday,i));
+  const sunday = days[6];
+  const f = d=>pad2(d.getDate())+'.'+pad2(d.getMonth()+1)+'.';
+  document.getElementById('week-label').textContent = (weekOffset===0?'Tento týden · ':'') + f(monday)+' – '+f(sunday);
+
+  document.getElementById('week-strip').innerHTML = days.map(d=>{
+    const iso=dateToStr(d);
+    const items = nakladky.filter(n=>n.datum===iso);
+    const dots = items.slice(0,3).map(n=>`<div class="day-dot" style="background:${n.typ==='vykladka'?'#4a9eff':'#e67e22'}"></div>`).join('');
+    return `<div class="day-cell${iso===todayStr()?' today':''}${iso===selDay?' on':''}" onclick="pickDay('${iso}')">
+      <div class="day-wd">${WEEKDAY_CS[d.getDay()]}</div>
+      <div class="day-num">${d.getDate()}</div>
+      <div class="day-dots">${dots}</div>
+    </div>`;
+  }).join('');
+}
+function pickDay(iso){ selDay=iso; renderNakladky(); }
+
+function renderNakladky(){
+  renderWeekStrip();
+  document.getElementById('nak-chips').innerHTML = `
+    <button class="chip${nakFilter==='all'?' on':''}" onclick="setNakFilter('all')">Celý týden</button>
+    <button class="chip${nakFilter==='den'?' on':''}" onclick="setNakFilter('den')">Jen ${fmtDate(selDay)}</button>
+    <button class="chip${nakFilter==='nove'?' on':''}" onclick="setNakFilter('nove')">Nové</button>
+    <button class="chip${nakFilter==='vyrizene'?' on':''}" onclick="setNakFilter('vyrizene')">Vyřízené</button>`;
+
+  const monday = dateToStr(addDays(mondayOf(new Date()), weekOffset*7));
+  const sunday = dateToStr(addDays(mondayOf(new Date()), weekOffset*7+6));
+  let list = nakladky.filter(n=>n.datum>=monday && n.datum<=sunday);
+  if(nakFilter==='den') list = list.filter(n=>n.datum===selDay);
+  if(nakFilter==='nove') list = list.filter(n=>n.stav==='nove');
+  if(nakFilter==='vyrizene') list = list.filter(n=>n.stav==='vyrizene');
+  list.sort((a,b)=> a.datum===b.datum ? a.cas.localeCompare(b.cas) : a.datum.localeCompare(b.datum));
+
+  const el = document.getElementById('nak-list');
+  if(!list.length){ el.innerHTML='<div class="empty">Žádné záznamy v tomhle výběru.</div>'; }
+  else{
+    el.innerHTML = list.map(n=>{
+      const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
+      return `<div class="item" onclick="openNakladka('${n.id}')">
+        <div class="item-dot" style="background:${n.typ==='vykladka'?'#4a9eff':'#e67e22'}"></div>
+        <div class="item-body">
+          <div class="item-title">${n.typ==='vykladka'?'Vykládka':'Nakládka'} · ${n.partner}
+            <span class="pill ${n.stav==='vyrizene'?'pill-done':'pill-new'}">${n.stav==='vyrizene'?'Vyřízeno':'Nové'}</span>
+          </div>
+          <div class="item-meta">${fmtDate(n.datum)} ${n.cas} · ${matSum}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const fab = document.getElementById('fab-btn');
+  if(role==='owner'){
+    fab.textContent='+ Nová nakládka / vykládka';
+    fab.onclick=()=>openNakladka(null);
+    document.getElementById('fab-wrap').style.display='block';
+  } else {
+    document.getElementById('fab-wrap').style.display='none';
+  }
+}
+function setNakFilter(v){ nakFilter=v; renderNakladky(); }
+
+/* ============ SHEET: NAKLÁDKA / VYKLÁDKA ============ */
+function openNakladka(id){
+  const rec = id ? nakladky.find(n=>n.id===id) : null;
+  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: person, ts:Date.now(), _isNew:!rec};
+  window._nkData = data;
+  window._nkAddingCustomer = false;
+  window._nkNewCustName = '';
+  window._nkNewCustMats = [];
+  renderNakladkaSheet();
+  openSheet();
+}
+
+function nkSyncFields(){
+  const d = window._nkData;
+  const g = id => document.getElementById(id);
+  if(g('nk-datum')) d.datum = g('nk-datum').value;
+  if(g('nk-cas')) d.cas = g('nk-cas').value;
+  if(g('nk-partner')) d.partner = g('nk-partner').value;
+  if(g('nk-poznamka')) d.poznamka = g('nk-poznamka').value;
+  if(g('nk-neshoda-komentar')) d.neshodaKomentar = g('nk-neshoda-komentar').value;
+}
+
+function nkNeshoda(d){
+  return d.typ==='vykladka' && d.ocekavano==='ok' && d.material.some(m=>(m.tridirna||0)>0 || (m.opravna||0)>0);
+}
+function nkTotals(d){
+  let sklad=0, tridirna=0, opravna=0, realMissing=false, dlMissing=false, protokolOk=true;
+  d.material.forEach(m=>{
+    sklad += m.sklad||0; tridirna += m.tridirna||0; opravna += m.opravna||0;
+    if(m.realQty==null || m.realQty==='') realMissing = true;
+    if(m.dlQty===''||m.dlQty==null) dlMissing = true;
+    if(m.realQty!=null && ((m.tridirna||0)+(m.sklad||0)+(m.opravna||0)) !== m.realQty) protokolOk = false;
+  });
+  return {sklad,tridirna,opravna,realMissing,dlMissing,protokolOk};
+}
+
+function nkNeshodaHtml(data){
+  if(!nkNeshoda(data)) return '';
+  return `
+    <div class="queue-card" style="background:#fbe9e9;border-color:#f0b3b3">
+      <div class="qc-title" style="color:var(--red)">⚠ Neshoda s domluveným stavem</div>
+      <div class="qc-meta" style="color:#a33">Bylo domluveno "OK — rovnou sklad", ale rozpad ukazuje třídění/opravu. Fotky níže a komentář budou potřeba jako doklad vůči dodavateli.</div>
+    </div>
+    <div class="field-lbl">Komentář k neshodě</div>
+    <textarea class="ftxt" id="nk-neshoda-komentar" placeholder="Co přesně nesedí a v jakém rozsahu" oninput="window._nkData.neshodaKomentar=this.value; nkRefreshDynamic();">${escapeHtml(data.neshodaKomentar||'')}</textarea>
+  `;
+}
+function nkPhotoTileHtml(p, field, i){
+  const del = `<button type="button" class="photo-thumb-del" onclick="nkRemovePhoto('${field}',${i})">✕</button>`;
+  const src = photoPreviewSrc(p);
+  if(src){
+    const pending = (p && typeof p==='object' && !p.driveFileId) ? `<div class="photo-thumb-badge">⏳</div>` : '';
+    return `<div class="photo-thumb"><img src="${src}">${pending}${del}</div>`;
+  }
+  const fid = p && typeof p==='object' && p.driveFileId;
+  if(fid){
+    const fn = photoFilenameOf(p) || '';
+    return `<div class="photo-thumb" data-foto-lazy="${fid}" data-foto-fn="${escapeAttr(fn)}"><div class="photo-thumb-loading">⏳</div>${del}</div>`;
+  }
+  const fn = photoFilenameOf(p);
+  if(fn) return `<div class="photo-file">📄<div class="pf-name">${escapeHtml(fn)}</div>${del}</div>`;
+  return `<div class="photo-thumb">${del}</div>`;
+}
+function nkPhotoGridHtml(data, field, label, hint, minCount){
+  const arr = data[field] || [];
+  const count = arr.length;
+  return `
+    <div class="field-lbl">${label} ${minCount?`<span style="color:${count>=minCount?'var(--green)':'var(--red)'}">(${count}/${minCount})</span>`:''}</div>
+    <div class="photo-grid">
+      ${arr.map((p,i)=>nkPhotoTileHtml(p,field,i)).join('')}
+      <div class="photo-add" onclick="document.getElementById('nk-inp-${field}').click()">📷<br>přidat</div>
+    </div>
+    <input type="file" accept="image/*" multiple id="nk-inp-${field}" style="display:none" onchange="nkAddPhotos(event,'${field}')">
+    ${hint?`<div class="hint" style="margin:-2px 0 10px">${hint}</div>`:''}
+  `;
+}
+function nkPhotoTriggers(data){
+  const t = nkTotals(data);
+  return {
+    sklad: t.sklad>0 || data.ocekavano==='ok',
+    tridirna: t.tridirna>0 || data.ocekavano==='trideni',
+    opravna: t.opravna>0 || data.ocekavano==='oprava',
+  };
+}
+function nkPhotosHtml(data){
+  if(data.typ!=='vykladka') return '';
+  const trig = nkPhotoTriggers(data);
+  let html = '';
+  if(trig.sklad) html += nkPhotoGridHtml(data,'fotoSklad','Foto dobrých palet (rovnou na sklad)','Dokumentace stavu palet bez závad',2);
+  if(trig.tridirna) html += nkPhotoGridHtml(data,'fotoTridirna','Foto poškozených palet k třídění','Vyfoť nejvíc poškozené kusy z dodávky',6);
+  if(trig.opravna) html += nkPhotoGridHtml(data,'fotoOpravna','Foto kamionu / stavu palet pro opravnu','Jak palety vypadaly při vyložení',2);
+  return html;
+}
+function nkChecklist(d){
+  const t = nkTotals(d);
+  const trig = nkPhotoTriggers(d);
+  const items = [];
+  if(d.typ==='vykladka'){
+    items.push({label:'Foto dodacího listu', ok: !!d.dlFoto});
+    items.push({label:'Počty podle DL i reálně vyplněné u všech položek', ok: !t.dlMissing && !t.realMissing});
+    if(trig.sklad) items.push({label:`Foto dobrých palet — min. 2 (${(d.fotoSklad||[]).length}/2)`, ok:(d.fotoSklad||[]).length>=2});
+    if(trig.tridirna) items.push({label:`Foto poškozených palet k třídění — min. 6 (${(d.fotoTridirna||[]).length}/6)`, ok:(d.fotoTridirna||[]).length>=6});
+    if(trig.opravna){
+      items.push({label:`Foto kamionu pro opravnu — min. 2 (${(d.fotoOpravna||[]).length}/2)`, ok:(d.fotoOpravna||[]).length>=2});
+      items.push({label:'Třídicí protokol kompletní (rozpad sedí na reálný počet)', ok: t.protokolOk});
+    }
+    if(nkNeshoda(d)) items.push({label:'Komentář k neshodě vyplněný', ok: !!(d.neshodaKomentar||'').trim()});
+  } else {
+    items.push({label:'Vyplněno, co se má naložit (počet ks u všech položek)', ok: !t.dlMissing});
+    items.push({label:'Po naložení doplněný skutečný počet ks u všech položek', ok: !t.realMissing});
+  }
+  return items;
+}
+function nkCanClose(d){
+  const items = nkChecklist(d);
+  return items.every(i=>i.ok);
+}
+function nkChecklistHtml(d){
+  const items = nkChecklist(d);
+  if(!items.length) return '';
+  const allOk = items.every(i=>i.ok);
+  return `
+    <div class="card" style="border-color:${allOk?'#bfe3cc':'#f0d98a'};background:${allOk?'#eaf7ef':'#fff8e6'}">
+      <div class="field-lbl" style="padding-top:0;color:${allOk?'#1d7a41':'#7a5c00'}">Podmínky pro "Uložit a označit Vyřízeno"</div>
+      ${items.map(i=>`<div class="checklist-row"><span style="color:${i.ok?'var(--green)':'var(--red)'};font-weight:800">${i.ok?'✓':'✗'}</span><span>${i.label}</span></div>`).join('')}
+    </div>
+  `;
+}
+function nkRefreshDynamic(){
+  const d = window._nkData;
+  document.getElementById('nk-neshoda-block').innerHTML = nkNeshodaHtml(d);
+  const photosBlock = document.getElementById('nk-photos-block');
+  photosBlock.innerHTML = nkPhotosHtml(d);
+  hydrateFotoLazy(photosBlock);
+  document.getElementById('nk-checklist-block').innerHTML = nkChecklistHtml(d);
+  const btn = document.getElementById('nk-close-btn');
+  if(btn) btn.disabled = !nkCanClose(d);
+}
+function nkAddPhotos(ev, field){
+  const files = Array.from(ev.target.files||[]);
+  if(!files.length) return;
+  toast('⏳ Zpracovávám fotky…');
+  const d = window._nkData;
+  Promise.all(files.map(f=>compressImage(f))).then(dataUrls=>{
+    if(!driveUploadEnabled()){
+      d[field] = (d[field]||[]).concat(dataUrls);
+      nkRefreshDynamic();
+      return;
+    }
+    const typBase = {fotoSklad:'sklad', fotoTridirna:'tridirna', fotoOpravna:'opravna'}[field] || field;
+    const startIdx = (d[field]||[]).length;
+    const items = dataUrls.map(dataUrl=>({dataUrl, driveFileId:null, url:null, filename:null}));
+    d[field] = (d[field]||[]).concat(items);
+    nkRefreshDynamic();
+    const slozka = driveSlozkaNazevZakazka(d.partner, d.datum);
+    items.forEach((item,i)=>{
+      uploadFotoNaDrive(item.dataUrl, d.datum, slozka, fotoTypNazev(typBase, startIdx+i+1)).then(res=>{
+        item.driveFileId = res.driveFileId; item.url = res.url; item.filename = res.filename;
+        nkRefreshDynamic();
+      }).catch(()=>toast('⚠ Nahrání na Disk selhalo, fotka zůstává jen v appce'));
+    });
+  });
+  ev.target.value = '';
+}
+function nkRemovePhoto(field, idx){
+  const d = window._nkData;
+  const arr = d[field]||[];
+  const removed = arr[idx];
+  d[field] = arr.filter((_,i)=>i!==idx);
+  if(removed && removed.driveFileId) smazatFotoZDrive(removed.driveFileId);
+  nkRefreshDynamic();
+}
+
+function renderNakladkaSheet(){
+  const data = window._nkData;
+  const isNew = data._isNew;
+  const canEditPlan = role==='owner';
+
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${isNew?'Nová nakládka / vykládka':(data.typ==='vykladka'?'Vykládka':'Nakládka')+' — '+data.partner}</div>
+    <div class="sheet-sub">${isNew?'':'Založil '+data.zalozil+(data.provedl?' · Nakládal/vykládal '+data.provedl:'')}</div>
+
+    <div class="field-lbl">Typ</div>
+    <div class="seg">
+      <div class="seg-btn ${data.typ==='vykladka'?'on':''}" ${canEditPlan?`onclick="nkSetTyp('vykladka')"`:''}>Vykládka</div>
+      <div class="seg-btn ${data.typ==='nakladka'?'on':''}" ${canEditPlan?`onclick="nkSetTyp('nakladka')"`:''}>Nakládka</div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <div class="field-lbl">Datum</div>
+        <input class="finp" type="date" id="nk-datum" value="${data.datum}" ${canEditPlan?'':'disabled'}>
+      </div>
+      <div>
+        <div class="field-lbl">Čas</div>
+        <input class="finp" type="time" id="nk-cas" value="${data.cas}" ${canEditPlan?'':'disabled'}>
+      </div>
+    </div>
+
+    <div class="field-lbl">Dodavatel / odběratel</div>
+    ${nkPartnerFieldHtml(data, canEditPlan)}
+
+    ${data.typ==='vykladka' ? `
+    <div class="field-lbl">Očekávaný stav (dle domluvy s dodavatelem)</div>
+    <div class="seg">
+      ${Object.entries(OCEKAVANO).map(([k,v])=>`<div class="seg-btn ${data.ocekavano===k?'on':''}" style="${data.ocekavano===k?`background:${v.color};border-color:${v.color}`:''}" ${canEditPlan?`onclick="nkSetOcekavano('${k}')"`:''}>${v.label}</div>`).join('')}
+    </div>
+    ` : ''}
+
+    <div class="field-lbl">${data.typ==='vykladka' ? 'Materiál (plánovaný / dle DL)' : 'Materiál (co se má naložit)'}</div>
+    <div id="nk-material"></div>
+    ${canEditPlan?`<button class="btn" onclick="nkAddMaterialRow()">+ přidat typ palety</button>`:''}
+
+    ${data.typ==='vykladka' ? `
+    <div class="field-lbl">Foto dodacího listu</div>
+    <div class="photo-box" onclick="document.getElementById('nk-dlfoto-inp').click()">
+      ${photoBoxInnerHtml(data.dlFoto, '<div>📷 Klepni pro vyfocení / nahrání DL</div>')}
+      <div class="hint">${data.dlFoto?'Klepnutím nahradíš fotku':'Povinné — nahrává Martin při příjezdu'}</div>
+    </div>
+    <input type="file" accept="image/*" id="nk-dlfoto-inp" style="display:none" onchange="nkPhoto(event,'dlFoto')">
+
+    <div class="field-lbl">Rozpad podle střediska (po vyložení — vyplňuje ten, kdo skládá)</div>
+    <div class="sheet-sub" style="margin-bottom:8px">Součet Třídírna+Sklad+Opravna by měl sedět na skutečně vyložený počet. Podklad pro budoucí napojení na Allegro.</div>
+    ` : ''}
+
+    <div id="nk-neshoda-block">${nkNeshodaHtml(data)}</div>
+    <div id="nk-photos-block">${nkPhotosHtml(data)}</div>
+    <div id="nk-checklist-block">${nkChecklistHtml(data)}</div>
+
+    <div class="field-lbl">Poznámka</div>
+    <textarea class="ftxt" id="nk-poznamka" ${canEditPlan?'':'disabled'}>${escapeHtml(data.poznamka)}</textarea>
+
+    <div style="height:6px"></div>
+    <button class="btn ${data.stav==='nove'?'':'btn-primary'}" onclick="nkSave('${data.stav}')">${data.stav==='nove'?'Uložit':'Uložit (zůstává Vyřízeno)'}</button>
+    ${data.stav==='nove' ? `<button class="btn btn-primary" id="nk-close-btn" ${nkCanClose(data)?'':'disabled'} onclick="nkSave('vyrizene')">✓ Uložit a označit Vyřízeno</button>` : ''}
+    ${data.stav==='vyrizene' ? `<button class="btn" onclick="nkSave('nove')">↩ Vrátit na Nové</button>`:''}
+    ${(!isNew && role==='owner') ? `<button class="btn btn-danger" onclick="nkDelete('${data.id}')">Smazat záznam</button>` : ''}
+  `;
+  renderMaterialRows();
+  hydrateFotoLazy(sheet);
+}
+
+function demoPhotoDataUri(){
+  return "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='180'><rect width='300' height='180' fill='%23e8e8ed'/><text x='150' y='95' font-family='sans-serif' font-size='14' fill='%23888' text-anchor='middle'>Demo foto dodacího listu</text></svg>`);
+}
+
+function nkPartnerFieldHtml(data, canEditPlan){
+  if(!canEditPlan){
+    return `<input class="finp" value="${escapeAttr(data.partner)}" disabled>`;
+  }
+  const matched = zakaznici.find(z=>z.nazev===data.partner);
+  const addingNew = !!window._nkAddingCustomer;
+  const manualMode = !addingNew && !matched && !!data.partner;
+  let html = `
+    <select class="finp" id="nk-partner-select" onchange="nkPartnerSelect(this.value)">
+      <option value="" ${!matched && !manualMode && !addingNew ? 'selected':''}>— vyber ze seznamu —</option>
+      ${[...zakaznici].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(z=>`<option value="${z.id}" ${matched && matched.id===z.id ? 'selected':''}>${escapeHtml(z.nazev)}</option>`).join('')}
+      <option value="__manual__" ${manualMode?'selected':''}>Jiná firma (nezadat do databáze)</option>
+      <option value="__new__" ${addingNew?'selected':''}>+ Nový zákazník…</option>
+    </select>
+  `;
+  if(manualMode){
+    html += `<input class="finp" id="nk-partner" style="margin-top:8px" placeholder="Název firmy" value="${escapeAttr(data.partner)}" oninput="window._nkData.partner=this.value">`;
+  }
+  if(addingNew){
+    html += nkNewCustomerFormHtml();
+  }
+  return html;
+}
+function nkNewCustomerFormHtml(){
+  const mats = window._nkNewCustMats || [];
+  return `
+    <div class="card" style="margin-top:8px">
+      <div class="field-lbl" style="padding-top:0">Nový zákazník</div>
+      <input class="finp" id="nk-newcust-name" placeholder="Název firmy" value="${escapeAttr(window._nkNewCustName||'')}" oninput="window._nkNewCustName=this.value">
+      <div class="field-lbl">Obvyklý materiál (lze víc)</div>
+      <div class="chips">
+        ${PALLETS.map(p=>`<button type="button" class="chip${mats.includes(p)?' on':''}" onclick="nkToggleNewCustMat('${p}')">${p}</button>`).join('')}
+      </div>
+      <div style="height:6px"></div>
+      <button class="btn btn-primary" onclick="nkSaveNewCustomer()">✓ Uložit zákazníka a použít</button>
+      <button class="btn" onclick="nkCancelNewCustomer()">Zrušit</button>
+    </div>
+  `;
+}
+function nkToggleNewCustMat(p){
+  window._nkNewCustMats = window._nkNewCustMats || [];
+  const i = window._nkNewCustMats.indexOf(p);
+  if(i>=0) window._nkNewCustMats.splice(i,1); else window._nkNewCustMats.push(p);
+  renderNakladkaSheet();
+}
+function nkSaveNewCustomer(){
+  const name = (window._nkNewCustName||'').trim();
+  if(!name){ toast('⚠ Zadej název firmy'); return; }
+  const mats = (window._nkNewCustMats && window._nkNewCustMats.length) ? window._nkNewCustMats.slice() : [PALLETS[0]];
+  const z = {id:uid(), nazev:name, materialy:mats};
+  zakaznici.push(z); fbSet('zakaznici', z.id, z);
+  const d = window._nkData;
+  d.partner = z.nazev;
+  d.material = mats.map(typ=>({typ, dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}));
+  window._nkAddingCustomer=false; window._nkNewCustName=''; window._nkNewCustMats=[];
+  toast('✓ Zákazník uložen do databáze');
+  renderNakladkaSheet();
+}
+function nkCancelNewCustomer(){
+  window._nkAddingCustomer=false;
+  renderNakladkaSheet();
+}
+function nkPartnerSelect(value){
+  const d = window._nkData;
+  if(value===''){
+    d.partner=''; window._nkAddingCustomer=false;
+    renderNakladkaSheet(); return;
+  }
+  if(value==='__manual__'){
+    window._nkAddingCustomer=false;
+    if(zakaznici.some(z=>z.nazev===d.partner)) d.partner='';
+    renderNakladkaSheet(); return;
+  }
+  if(value==='__new__'){
+    window._nkAddingCustomer=true; window._nkNewCustName=''; window._nkNewCustMats=[];
+    renderNakladkaSheet(); return;
+  }
+  window._nkAddingCustomer=false;
+  const z = zakaznici.find(z=>z.id===value);
+  if(z){
+    d.partner = z.nazev;
+    d.material = (z.materialy&&z.materialy.length?z.materialy:[PALLETS[0]]).map(typ=>({typ, dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}));
+    toast('✓ Materiál předvyplněn dle zákazníka — uprav počty');
+  }
+  renderNakladkaSheet();
+}
+function nkSetTyp(t){ nkSyncFields(); window._nkData.typ=t; renderNakladkaSheet(); }
+function nkSetOcekavano(v){ nkSyncFields(); window._nkData.ocekavano=v; renderNakladkaSheet(); }
+function renderMaterialRows(){
+  const d = window._nkData;
+  const canEditPlan = role==='owner';
+  const el = document.getElementById('nk-material');
+  el.innerHTML = d.material.map((m,i)=>`
+    <div class="material-row">
+      <select onchange="nkMatField(${i},'typ',this.value)" ${canEditPlan?'':'disabled'}>
+        ${PALLETS.map(p=>`<option ${p===m.typ?'selected':''}>${p}</option>`).join('')}
+      </select>
+      <input type="number" inputmode="numeric" placeholder="${d.typ==='vykladka'?'dle DL':'k naložení'}" value="${m.dlQty??''}" onchange="nkMatField(${i},'dlQty',this.value)" ${canEditPlan?'':'disabled'}>
+      <input type="number" inputmode="numeric" placeholder="${d.typ==='vykladka'?'reálně':'naloženo'}" value="${m.realQty??''}" oninput="nkMatField(${i},'realQty',this.value)">
+      ${canEditPlan?`<button type="button" class="mat-row-del" onclick="nkRemoveMaterialRow(${i})" title="Smazat typ palety">✕</button>`:''}
+    </div>
+    ${(d.typ==='vykladka') ? `
+    <div class="stredisko-grid" style="margin-bottom:10px">
+      <div class="stredisko-cell"><div class="lbl" style="color:${STREDISKA.tridirna.color}">Třídírna</div><input type="number" inputmode="numeric" value="${m.tridirna??''}" oninput="nkMatField(${i},'tridirna',this.value)"></div>
+      <div class="stredisko-cell"><div class="lbl" style="color:${STREDISKA.sklad.color}">Sklad</div><input type="number" inputmode="numeric" value="${m.sklad??''}" oninput="nkMatField(${i},'sklad',this.value)"></div>
+      <div class="stredisko-cell"><div class="lbl" style="color:${STREDISKA.opravna.color}">Opravna</div><input type="number" inputmode="numeric" value="${m.opravna??''}" oninput="nkMatField(${i},'opravna',this.value)"></div>
+    </div>` : ''}
+  `).join('');
+}
+function nkMatField(i,field,val){
+  window._nkData.material[i][field] = (field==='typ') ? val : (val===''?null:parseInt(val));
+  // realQty/tridirna/sklad/opravna ovlivňují banner neshody a přiřazení dělníků — překreslí se jen ty dva bloky, ne celý sheet (jinak by to shazovalo focus při psaní)
+  if(['realQty','tridirna','sklad','opravna'].includes(field)) nkRefreshDynamic();
+}
+function nkAddMaterialRow(){
+  window._nkData.material.push({typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null});
+  renderMaterialRows();
+}
+function nkRemoveMaterialRow(i){
+  window._nkData.material.splice(i,1);
+  renderMaterialRows();
+  nkRefreshDynamic();
+}
+function nkPhoto(ev,field){
+  const file = ev.target.files[0];
+  if(!file) return;
+  toast('⏳ Zpracovávám fotku…');
+  compressImage(file).then(dataUrl=>{
+    nkSyncFields();
+    const d = window._nkData;
+    if(!driveUploadEnabled()){
+      d[field] = dataUrl;
+      renderNakladkaSheet();
+      return;
+    }
+    const item = {dataUrl, driveFileId:null, url:null, filename:null};
+    d[field] = item;
+    renderNakladkaSheet();
+    const slozka = driveSlozkaNazevZakazka(d.partner, d.datum);
+    uploadFotoNaDrive(dataUrl, d.datum, slozka, fotoTypNazev(field==='dlFoto'?'dl':field, 1)).then(res=>{
+      item.driveFileId = res.driveFileId; item.url = res.url; item.filename = res.filename;
+      renderNakladkaSheet();
+    }).catch(()=>toast('⚠ Nahrání na Disk selhalo, fotka zůstává jen v appce'));
+  });
+}
+
+function nkSave(stav){
+  nkSyncFields();
+  const d = window._nkData;
+
+  if(stav==='vyrizene' && !nkCanClose(d)){
+    toast('⚠ Nejdou splněné podmínky pro Vyřízeno — zkontroluj checklist');
+    return;
+  }
+
+  if(driveUploadEnabled()){
+    const arrFields = ['fotoSklad','fotoTridirna','fotoOpravna'];
+    const pending = !fotoJeNahotova(d.dlFoto) || arrFields.some(f=>(d[f]||[]).some(p=>!fotoJeNahotova(p)));
+    if(pending){
+      toast('⏳ Fotky se ještě nahrávají na Disk, počkej chvíli a zkus to znovu');
+      return;
+    }
+    d.dlFoto = stripPendingAndDataUrl(d.dlFoto);
+    arrFields.forEach(f=>{ d[f] = (d[f]||[]).map(stripPendingAndDataUrl); });
+  }
+
+  if(!docSizeOk(d)){
+    toast('⚠ Moc velké fotky — smaž pár fotek nebo je vyfoť znovu (méně detailně) a zkus to znovu');
+    return;
+  }
+
+  d.stav = stav;
+  delete d._isNew;
+  d.provedl = person; // kdo fyzicky nakládal/vykládal — vždy přepsáno na aktuálně přihlášeného, bez ručního zadávání
+  const idx = nakladky.findIndex(n=>n.id===d.id);
+  if(idx>=0) nakladky[idx]=d; else nakladky.unshift(d);
+
+  fbSet('nakladky', d.id, d);
+  closeSheet(); renderNakladky();
+  toast(stav==='vyrizene' ? '✓ Označeno jako vyřízeno' : '✓ Uloženo');
+}
+function nkDelete(id){
+  nakladky = nakladky.filter(n=>n.id!==id);
+  fbDelete('nakladky', id);
+  closeSheet(); renderNakladky();
+  toast('🗑 Smazáno');
+}
+
+/* ============ SHEET: ZÁKAZNÍCI (databáze dodavatelů/odběratelů) ============ */
+function openZakaznikList(){
+  renderZakaznikListSheet();
+  openSheet();
+}
+function renderZakaznikListSheet(){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">Zákazníci</div>
+    <div class="sheet-sub">Základní databáze firem — jméno se předvyplní i s obvyklým materiálem při zadávání nakládky/vykládky.</div>
+    <div style="height:6px"></div>
+    <div id="zk-list"></div>
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="openZakaznik(null)">+ Přidat zákazníka</button>
+  `;
+  const el = document.getElementById('zk-list');
+  if(!zakaznici.length){ el.innerHTML = '<div class="empty">Zatím žádní zákazníci.</div>'; return; }
+  el.innerHTML = [...zakaznici].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(z=>`
+    <div class="item" onclick="openZakaznik('${z.id}')">
+      <div class="item-dot" style="background:var(--blue)"></div>
+      <div class="item-body">
+        <div class="item-title">${escapeHtml(z.nazev)}</div>
+        <div class="item-meta">${(z.materialy||[]).join(', ') || '—'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function openZakaznik(id){
+  const rec = id ? zakaznici.find(z=>z.id===id) : null;
+  window._zkData = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), nazev:'', materialy:[], _isNew:true};
+  renderZakaznikSheet();
+}
+function renderZakaznikSheet(){
+  const d = window._zkData;
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${d._isNew?'Nový zákazník':d.nazev}</div>
+
+    <div class="field-lbl">Název firmy</div>
+    <input class="finp" id="zk-nazev" value="${escapeAttr(d.nazev)}" placeholder="Název firmy" oninput="window._zkData.nazev=this.value">
+
+    <div class="field-lbl">Obvyklý materiál (lze víc)</div>
+    <div class="chips" id="zk-mat-chips">
+      ${PALLETS.map(p=>`<button type="button" class="chip${(d.materialy||[]).includes(p)?' on':''}" onclick="zkToggleMat('${p}')">${p}</button>`).join('')}
+    </div>
+
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="zkSave()">✓ Uložit zákazníka</button>
+    <button class="btn" onclick="renderZakaznikListSheet()">← Zpět na seznam</button>
+    ${(!d._isNew && role==='owner') ? `<button class="btn btn-danger" onclick="zkDelete('${d.id}')">Smazat zákazníka</button>` : ''}
+  `;
+}
+function zkToggleMat(p){
+  const d = window._zkData;
+  d.materialy = d.materialy || [];
+  const i = d.materialy.indexOf(p);
+  if(i>=0) d.materialy.splice(i,1); else d.materialy.push(p);
+  renderZakaznikSheet();
+}
+function zkSave(){
+  const d = window._zkData;
+  if(!d.nazev.trim()){ toast('⚠ Zadej název firmy'); return; }
+  delete d._isNew;
+  const idx = zakaznici.findIndex(z=>z.id===d.id);
+  if(idx>=0) zakaznici[idx]=d; else zakaznici.push(d);
+  fbSet('zakaznici', d.id, d);
+  toast('✓ Zákazník uložen');
+  renderZakaznikListSheet();
+}
+function zkDelete(id){
+  zakaznici = zakaznici.filter(z=>z.id!==id);
+  fbDelete('zakaznici', id);
+  toast('🗑 Zákazník smazán');
+  renderZakaznikListSheet();
+}
+
+/* ============ SHEET: PRAVIDELNÉ ÚKOLY (šablony) ============ */
+function openSablonyList(){
+  renderSablonyListSheet();
+  openSheet();
+}
+function renderSablonyListSheet(){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">Pravidelné úkoly</div>
+    <div class="sheet-sub">Šablony, ze kterých appka sama každý týden/měsíc vytvoří nový úkol v Úkolech. Vypnutá šablona přestane generovat nové, historie zůstane.</div>
+    <div style="height:6px"></div>
+    <div id="sb-list"></div>
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="openSablona(null)">+ Přidat pravidelný úkol</button>
+  `;
+  const el = document.getElementById('sb-list');
+  if(!sablony.length){ el.innerHTML = '<div class="empty">Zatím žádné pravidelné úkoly.</div>'; return; }
+  el.innerHTML = [...sablony].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(s=>{
+    const kdy = s.frekvence==='mesicne' ? (s.den||1)+'. den v měsíci' : 'každé '+(DEN_TYDNE_NAZEV[s.den||5]);
+    return `<div class="item" onclick="openSablona('${s.id}')">
+      <div class="item-dot" style="background:${s.aktivni===false?'var(--muted)':'var(--green)'}"></div>
+      <div class="item-body">
+        <div class="item-title">${escapeHtml(s.nazev)} ${s.aktivni===false?'<span class="pill" style="background:var(--bg3);color:var(--dim)">Vypnuto</span>':''}</div>
+        <div class="item-meta">${s.resitel} · ${kdy}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openSablona(id){
+  const rec = id ? sablony.find(s=>s.id===id) : null;
+  window._sbData = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), nazev:'', popis:'', resitel:'Lukáš', priorita:'stredni', frekvence:'tydne', den:5, aktivni:true, zadavatel:person, ts:Date.now(), _isNew:true};
+  renderSablonaSheet();
+}
+function renderSablonaSheet(){
+  const d = window._sbData;
+  const resitelOptions = ['Lukáš','Ondřej','Martin'];
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${d._isNew?'Nový pravidelný úkol':d.nazev}</div>
+
+    <div class="field-lbl">Název</div>
+    <input class="finp" id="sb-nazev" value="${escapeAttr(d.nazev)}" placeholder="Co se má pravidelně dělat" oninput="window._sbData.nazev=this.value">
+
+    <div class="field-lbl">Popis</div>
+    <textarea class="ftxt" id="sb-popis" placeholder="Detaily (nepovinné)" oninput="window._sbData.popis=this.value">${escapeHtml(d.popis||'')}</textarea>
+
+    <div class="field-lbl">Řešitel</div>
+    <select class="fsel" id="sb-resitel" onchange="window._sbData.resitel=this.value">${resitelOptions.map(r=>`<option ${r===d.resitel?'selected':''}>${r}</option>`).join('')}</select>
+
+    <div class="field-lbl">Opakování</div>
+    <div class="seg">
+      <div class="seg-btn ${d.frekvence==='tydne'?'on':''}" onclick="sbSetFrekvence('tydne')">Týdně</div>
+      <div class="seg-btn ${d.frekvence==='mesicne'?'on':''}" onclick="sbSetFrekvence('mesicne')">Měsíčně</div>
+    </div>
+
+    ${d.frekvence==='tydne' ? `
+    <div class="field-lbl">V který den</div>
+    <select class="fsel" id="sb-den" onchange="window._sbData.den=Number(this.value)">
+      ${DEN_TYDNE_NAZEV.map((n,i)=>i===0?'':`<option value="${i}" ${d.den===i?'selected':''}>${n}</option>`).join('')}
+    </select>
+    ` : `
+    <div class="field-lbl">Který den v měsíci</div>
+    <input class="finp" type="number" id="sb-den" min="1" max="31" value="${d.den||1}" oninput="window._sbData.den=Number(this.value)">
+    <div class="hint" style="margin:-2px 0 10px">Pokud má měsíc míň dní, appka použije poslední den v měsíci.</div>
+    `}
+
+    <div class="field-lbl">Priorita</div>
+    <div class="seg">
+      <div class="seg-btn ${d.priorita==='nizka'?'on':''}" onclick="window._sbData.priorita='nizka'; renderSablonaSheet();">Nízká</div>
+      <div class="seg-btn ${d.priorita==='stredni'?'on':''}" onclick="window._sbData.priorita='stredni'; renderSablonaSheet();">Střední</div>
+      <div class="seg-btn ${d.priorita==='vysoka'?'on':''}" onclick="window._sbData.priorita='vysoka'; renderSablonaSheet();">Vysoká</div>
+    </div>
+
+    ${!d._isNew ? `
+    <div class="field-lbl">Stav</div>
+    <div class="seg">
+      <div class="seg-btn ${d.aktivni!==false?'on':''}" onclick="window._sbData.aktivni=true; renderSablonaSheet();">Aktivní</div>
+      <div class="seg-btn ${d.aktivni===false?'on':''}" onclick="window._sbData.aktivni=false; renderSablonaSheet();">Vypnuto</div>
+    </div>
+    <div class="hint" style="margin:-2px 0 10px">Vypnutím appka přestane zakládat nové úkoly z téhle šablony. Už vygenerované úkoly a jejich historie zůstanou.</div>
+    ` : ''}
+
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="sbSave()">✓ Uložit pravidelný úkol</button>
+    <button class="btn" onclick="renderSablonyListSheet()">← Zpět na seznam</button>
+    ${!d._isNew ? `<button class="btn btn-danger" onclick="sbDelete('${d.id}')">Smazat pravidelný úkol</button>` : ''}
+  `;
+}
+function sbSetFrekvence(f){
+  window._sbData.frekvence = f;
+  window._sbData.den = f==='tydne' ? 5 : 1;
+  renderSablonaSheet();
+}
+function sbSave(){
+  const d = window._sbData;
+  if(!d.nazev.trim()){ toast('⚠ Zadej název pravidelného úkolu'); return; }
+  delete d._isNew;
+  const idx = sablony.findIndex(s=>s.id===d.id);
+  if(idx>=0) sablony[idx]=d; else sablony.push(d);
+  fbSet('ukoly_sablony', d.id, d);
+  toast('✓ Pravidelný úkol uložen');
+  renderSablonyListSheet();
+}
+function sbDelete(id){
+  sablony = sablony.filter(s=>s.id!==id);
+  fbDelete('ukoly_sablony', id);
+  toast('🗑 Pravidelný úkol smazán (historie úkolů zůstává)');
+  renderSablonyListSheet();
+}
+
+/* ============ RENDER: ÚKOLY ============ */
+function renderUkoly(){
+  const total = ukoly.length;
+  const otevrene = ukoly.filter(u=>u.stav==='nove').length;
+  const poTerminu = ukoly.filter(isOverdue).length;
+  document.getElementById('ukol-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${otevrene}</div><div class="stat-lbl">Otevřené</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${poTerminu?'var(--red)':'inherit'}">${poTerminu}</div><div class="stat-lbl">Po termínu</div></div>
+    <div class="stat-card"><div class="stat-val">${total}</div><div class="stat-lbl">Celkem</div></div>`;
+
+  document.getElementById('ukol-chips').innerHTML = `
+    <button class="chip${ukolFilter==='moje'?' on':''}" onclick="setUkolFilter('moje')">${role==='sklad'?'Moje úkoly':'Vše'}</button>
+    <button class="chip${ukolFilter==='po_terminu'?' on':''}" onclick="setUkolFilter('po_terminu')">Po termínu</button>
+    <button class="chip${ukolFilter==='vyrizene'?' on':''}" onclick="setUkolFilter('vyrizene')">Vyřízené</button>
+    ${role==='owner' ? `<button class="chip" onclick="openSablonyList()">🔁 Pravidelné úkoly</button>` : ''}`;
+
+  let list = [...ukoly];
+  if(role==='sklad'){
+    list = list.filter(u=>u.resitel==='Martin' || u.zadavatel==='Martin');
+  }
+  if(ukolFilter==='po_terminu') list = list.filter(isOverdue);
+  if(ukolFilter==='vyrizene') list = list.filter(u=>u.stav==='vyrizene');
+  else if(ukolFilter==='moje') list = list.filter(u=>u.stav!=='vyrizene');
+
+  list.sort((a,b)=> (isOverdue(b)-isOverdue(a)) || a.termin.localeCompare(b.termin));
+
+  const el = document.getElementById('ukol-list');
+  if(!list.length){ el.innerHTML = '<div class="empty">Žádné úkoly v tomhle výběru.</div>'; }
+  else {
+    el.innerHTML = list.map(u=>{
+      const late = isOverdue(u);
+      return `<div class="item" onclick="openUkol('${u.id}')">
+        <div class="item-dot" style="background:${late?'var(--red)':(u.stav==='vyrizene'?'var(--green)':'var(--blue)')}"></div>
+        <div class="item-body">
+          <div class="item-title">${escapeHtml(u.nazev)} ${u.sablonaId?'<span class="pill pill-recurring">🔁 opakuje se</span>':''} ${late?'<span class="pill pill-late">Po termínu</span>':(u.stav==='vyrizene'?'<span class="pill pill-done">Vyřízeno</span>':'')}</div>
+          <div class="item-meta">${u.zadavatel} → ${u.resitel} · termín ${fmtDate(u.termin)} ${u.komentare.length?`· 💬 ${u.komentare.length}`:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('fab-btn').textContent = '+ Nový úkol';
+  document.getElementById('fab-btn').onclick = ()=>openUkol(null);
+  document.getElementById('fab-wrap').style.display='block';
+}
+function setUkolFilter(v){ ukolFilter=v; renderUkoly(); }
+
+function openUkol(id){
+  const rec = id ? ukoly.find(u=>u.id===id) : null;
+  const d = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), nazev:'', popis:'', zadavatel: role==='sklad'?'Martin':'Lukáš', resitel: role==='sklad'?'Lukáš':'Ondřej', termin:todayStr(), priorita:'stredni', stav:'nove', komentare:[], foto:null, ts:Date.now(), _isNew:!rec};
+  window._ukData = d;
+  renderUkolSheet();
+  openSheet();
+}
+
+function ukSyncFields(){
+  const d = window._ukData;
+  const g = id => document.getElementById(id);
+  if(g('uk-nazev')) d.nazev = g('uk-nazev').value;
+  if(g('uk-popis')) d.popis = g('uk-popis').value;
+  if(g('uk-resitel')) d.resitel = g('uk-resitel').value;
+  if(g('uk-termin')) d.termin = g('uk-termin').value;
+}
+
+function renderUkolSheet(){
+  const d = window._ukData;
+  const isNew = d._isNew;
+  const resitelOptions = role==='sklad' ? ['Lukáš','Ondřej'] : ['Lukáš','Ondřej','Martin'];
+
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${isNew?'Nový úkol':escapeHtml(d.nazev)}</div>
+    <div class="sheet-sub">${isNew?'':'Zadal '+d.zadavatel+(isOverdue(d)?' · <span style="color:var(--red);font-weight:700">po termínu</span>':'')}${d.sablonaId?' · 🔁 opakující se úkol (nastavení v Pravidelných úkolech)':''}</div>
+
+    <div class="field-lbl">Název</div>
+    <input class="finp" id="uk-nazev" value="${escapeAttr(d.nazev)}" placeholder="Co je potřeba udělat">
+
+    <div class="field-lbl">Popis</div>
+    <textarea class="ftxt" id="uk-popis" placeholder="Detaily (nepovinné)">${escapeHtml(d.popis)}</textarea>
+
+    <div class="row2">
+      <div>
+        <div class="field-lbl">Řešitel</div>
+        <select class="fsel" id="uk-resitel">${resitelOptions.map(r=>`<option ${r===d.resitel?'selected':''}>${r}</option>`).join('')}</select>
+      </div>
+      <div>
+        <div class="field-lbl">Termín</div>
+        <input class="finp" type="date" id="uk-termin" value="${d.termin}">
+      </div>
+    </div>
+
+    <div class="field-lbl">Priorita</div>
+    <div class="seg">
+      <div class="seg-btn ${d.priorita==='nizka'?'on':''}" onclick="ukSetPrio('nizka')">Nízká</div>
+      <div class="seg-btn ${d.priorita==='stredni'?'on':''}" onclick="ukSetPrio('stredni')">Střední</div>
+      <div class="seg-btn ${d.priorita==='vysoka'?'on':''}" onclick="ukSetPrio('vysoka')">Vysoká</div>
+    </div>
+
+    <div class="field-lbl">Foto</div>
+    <div class="photo-box" onclick="document.getElementById('uk-foto-inp').click()">
+      ${photoBoxInnerHtml(d.foto, '<div>📷 Klepni pro přidání fotky</div>')}
+      <div class="hint">Nepovinné, ale doporučené u hlášení problémů</div>
+    </div>
+    <input type="file" accept="image/*" id="uk-foto-inp" style="display:none" onchange="ukPhoto(event)">
+
+    ${!isNew ? `
+    <div class="field-lbl">Komentáře</div>
+    <div class="card" id="uk-comments">${renderComments(d.komentare)}</div>
+    <div class="row2" style="grid-template-columns:1fr auto">
+      <input class="finp" id="uk-newcomment" placeholder="Napsat komentář…">
+      <button class="btn btn-primary" style="width:auto;padding:11px 16px" onclick="ukAddComment('${d.id}')">Odeslat</button>
+    </div>
+    ` : ''}
+
+    <div style="height:6px"></div>
+    ${d.stav==='nove' ? `<button class="btn btn-primary" onclick="ukSave('vyrizene')">✓ Uložit a označit Vyřízeno</button>`
+                       : `<button class="btn" onclick="ukSave('nove')">↩ Vrátit na Nové</button>`}
+    <button class="btn ${d.stav==='nove'?'':'btn-primary'}" onclick="ukSave('${d.stav}')">${d.stav==='nove'?'Uložit':'Uložit'}</button>
+    ${(!isNew && role==='owner') ? `<button class="btn btn-danger" onclick="ukDelete('${d.id}')">Smazat úkol</button>` : ''}
+  `;
+  hydrateFotoLazy(sheet);
+}
+function renderComments(list){
+  if(!list.length) return '<div class="empty" style="padding:14px">Zatím žádné komentáře.</div>';
+  return list.map(c=>`<div class="comment"><div class="comment-who">${escapeHtml(c.autor)}</div><div class="comment-txt">${escapeHtml(c.text)}</div><div class="comment-ts">${new Date(c.ts).toLocaleString('cs-CZ')}</div></div>`).join('');
+}
+function ukSetPrio(p){ ukSyncFields(); window._ukData.priorita=p; renderUkolSheet(); }
+function ukPhoto(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  toast('⏳ Zpracovávám fotku…');
+  compressImage(file).then(dataUrl=>{
+    ukSyncFields();
+    const d = window._ukData;
+    if(!driveUploadEnabled()){
+      d.foto = dataUrl;
+      renderUkolSheet();
+      return;
+    }
+    const item = {dataUrl, driveFileId:null, url:null, filename:null};
+    d.foto = item;
+    renderUkolSheet();
+    const datum = todayStr();
+    const slozka = driveSlozkaNazev(datum, 'Úkol - '+d.nazev);
+    uploadFotoNaDrive(dataUrl, datum, slozka, 'ukol').then(res=>{
+      item.driveFileId = res.driveFileId; item.url = res.url; item.filename = res.filename;
+      renderUkolSheet();
+    }).catch(()=>toast('⚠ Nahrání na Disk selhalo, fotka zůstává jen v appce'));
+  });
+}
+function ukAddComment(id){
+  const inp = document.getElementById('uk-newcomment');
+  const txt = inp.value.trim();
+  if(!txt) return;
+  const autor = role==='sklad' ? 'Martin' : 'Lukáš';
+  window._ukData.komentare.push({autor, text:txt, ts:Date.now()});
+  const idx = ukoly.findIndex(u=>u.id===id);
+  if(idx>=0){ ukoly[idx]=window._ukData; fbSet('ukoly', id, window._ukData); }
+  renderUkolSheet();
+  toast('💬 Komentář přidán');
+}
+function ukSave(stav){
+  ukSyncFields();
+  const d = window._ukData;
+  d.nazev = d.nazev.trim();
+  d.stav = stav;
+  if(!d.nazev){ toast('⚠ Zadej název úkolu'); return; }
+  if(driveUploadEnabled()){
+    if(!fotoJeNahotova(d.foto)){
+      toast('⏳ Fotka se ještě nahrává na Disk, počkej chvíli a zkus to znovu');
+      return;
+    }
+    d.foto = stripPendingAndDataUrl(d.foto);
+  }
+  if(!docSizeOk(d)){ toast('⚠ Moc velká fotka — vyfoť znovu nebo ji smaž'); return; }
+  delete d._isNew;
+  const idx = ukoly.findIndex(u=>u.id===d.id);
+  if(idx>=0) ukoly[idx]=d; else ukoly.unshift(d);
+  fbSet('ukoly', d.id, d); closeSheet(); renderUkoly();
+  toast(stav==='vyrizene' ? '✓ Úkol vyřízen' : '✓ Uloženo');
+}
+function ukDelete(id){
+  ukoly = ukoly.filter(u=>u.id!==id);
+  fbDelete('ukoly', id); closeSheet(); renderUkoly();
+  toast('🗑 Smazáno');
+}
+
+/* ============ RENDER: PLÁN PRÁCE ============ */
+function planWeekNav(dir){ planWeekOffset+=dir; renderKapacita(); }
+
+function sortQueue(){
+  // Vykládky, kde se očekává nebo se ukázalo třídění, a ještě nejsou vyřízené — "kamiony čekající na vytřídění"
+  return nakladky.filter(n=>n.typ==='vykladka' && n.stav==='nove' && (n.ocekavano==='trideni' || n.material.some(m=>(m.tridirna||0)>0)));
+}
+
+function renderQueue(){
+  const queue = sortQueue();
+  const el = document.getElementById('queue-list');
+  if(!queue.length){ el.innerHTML = '<div class="empty" style="padding:16px">Žádné čekající kamiony na vytřídění.</div>'; return; }
+  el.innerHTML = queue.map(n=>{
+    const est = Math.max(1, n.material.filter(m=>(m.tridirna||0)>0).length);
+    return `<div class="queue-card" style="cursor:pointer" onclick="openNakladka('${n.id}')">
+      <div class="qc-title">🚚 ${escapeHtml(n.partner)} — ${fmtDate(n.datum)}</div>
+      <div class="qc-meta">${n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ')} · odhad ≈ ${est} dělníko-den${est>1?'y':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderKapacita(){
+  renderQueue();
+
+  const monday = mondayOf(addDays(new Date(), planWeekOffset*7));
+  const days = [...Array(7)].map((_,i)=>addDays(monday,i));
+  const sunday = days[6];
+  const f = d=>pad2(d.getDate())+'.'+pad2(d.getMonth()+1)+'.';
+  document.getElementById('plan-week-label').textContent = (planWeekOffset===0?'Tento týden · ':'') + f(monday)+' – '+f(sunday);
+
+  if(!days.some(d=>dateToStr(d)===planSelDay)) planSelDay = dateToStr(days[0]);
+
+  document.getElementById('plan-day-strip').innerHTML = days.map(d=>{
+    const iso = dateToStr(d);
+    const dots = WORKERS.filter(w=>workPlan[iso+'|'+w.name]).slice(0,4).map(w=>{
+      const a = workPlan[iso+'|'+w.name];
+      return `<div class="day-dot" style="background:${ACTIVITY[a.typ].color}"></div>`;
+    }).join('');
+    return `<div class="day-cell${iso===todayStr()?' today':''}${iso===planSelDay?' on':''}" onclick="planPickDay('${iso}')">
+      <div class="day-wd">${WEEKDAY_CS[d.getDay()]}</div>
+      <div class="day-num">${d.getDate()}</div>
+      <div class="day-dots">${dots}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('plan-day-lbl').textContent = 'Rozpis · ' + fmtDate(planSelDay) + (planSelDay===todayStr()?' (dnes)':'');
+
+  const canEdit = true; // rozpis teď smí zadat Ondra (owner) i Martin Bortlík (sklad) — viz workflow v5
+  document.getElementById('plan-list').innerHTML = WORKERS.map(w=>{
+    const a = workPlan[planSelDay+'|'+w.name];
+    const act = a ? ACTIVITY[a.typ] : null;
+    return `<div class="plan-row" ${canEdit?`onclick="openPlanCell('${w.name}')"`:''}>
+      <div class="plan-dot" style="background:${w.color}"></div>
+      <div class="plan-name">${w.name}</div>
+      <div class="plan-assign">
+        <div class="plan-assign-typ" style="color:${act?act.color:'var(--muted)'}">${act?act.label:'— nezadáno'}</div>
+        ${a && a.poznamka ? `<div class="plan-assign-note">${escapeHtml(a.poznamka)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('fab-wrap').style.display='none';
+}
+function planPickDay(iso){ planSelDay=iso; renderKapacita(); }
+
+function openPlanCell(workerName){
+  const key = planSelDay+'|'+workerName;
+  const cur = workPlan[key] || {typ:'trideni', vykladkaId:null, poznamka:''};
+  const queue = sortQueue();
+
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${workerName} — ${fmtDate(planSelDay)}</div>
+    <div class="sheet-sub">Zadává Ondřej / Lukáš</div>
+
+    <div class="field-lbl">Náplň dne</div>
+    <div class="seg" id="pl-typ-seg">
+      ${Object.entries(ACTIVITY).map(([k,v])=>`<div class="seg-btn ${cur.typ===k?'on':''}" data-v="${k}" onclick="plSetTyp(this)">${v.label}</div>`).join('')}
+    </div>
+
+    <div id="pl-vykladka-wrap" style="display:${cur.typ==='trideni'?'block':'none'}">
+      <div class="field-lbl">Ke kterému kamionu (nepovinné)</div>
+      <select class="fsel" id="pl-vykladka">
+        <option value="">— neurčeno / obecně —</option>
+        ${queue.map(n=>`<option value="${n.id}" ${cur.vykladkaId===n.id?'selected':''}>${escapeHtml(n.partner)} — ${fmtDate(n.datum)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="field-lbl">Poznámka</div>
+    <input class="finp" id="pl-poznamka" value="${escapeAttr(cur.poznamka||'')}" placeholder="např. typ palety, o co jde">
+
+    <button class="btn btn-primary" onclick="plSave('${workerName}')">Uložit</button>
+    ${workPlan[key] ? `<button class="btn btn-danger" onclick="plClear('${workerName}')">Smazat rozpis pro tento den</button>` : ''}
+  `;
+  openSheet();
+}
+function plSetTyp(el){
+  document.querySelectorAll('#pl-typ-seg .seg-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('pl-vykladka-wrap').style.display = el.dataset.v==='trideni' ? 'block' : 'none';
+}
+function plSave(workerName){
+  const typ = document.querySelector('#pl-typ-seg .seg-btn.on').dataset.v;
+  const vykladkaId = typ==='trideni' ? (document.getElementById('pl-vykladka').value || null) : null;
+  const poznamka = document.getElementById('pl-poznamka').value;
+  const key = planSelDay+'|'+workerName;
+  workPlan[key] = {typ, vykladkaId, poznamka};
+  fbSet('workplan', key, {typ, vykladkaId, poznamka, date:planSelDay, worker:workerName});
+  closeSheet(); renderKapacita();
+  toast('✓ Rozpis uložen');
+}
+function plClear(workerName){
+  const key = planSelDay+'|'+workerName;
+  delete workPlan[key];
+  fbDelete('workplan', key);
+  closeSheet(); renderKapacita();
+  toast('🗑 Smazáno');
+}
+
+/* ============ RENDER: GALERIE (soukromý přehled nahraných fotek) ============
+   Appka fotky nikdy veřejně nesdílí — náhledy tu jdou přes stejný soukromý
+   Apps Script Web App jako u jednotlivých záznamů (viz nacistFotoNahled výš).
+   Sbírá fotky ze všech nakládek/vykládek i úkolů, seřazené od nejnovějších,
+   klepnutím na dlaždici se otevře příslušný záznam. */
+function galerieCollect(){
+  const items = [];
+  nakladky.forEach(n=>{
+    const skupiny = [
+      [n.dlFoto ? [n.dlFoto] : [], 'Foto dodacího listu'],
+      [n.fotoSklad||[], 'Foto – sklad'],
+      [n.fotoTridirna||[], 'Foto – třídírna'],
+      [n.fotoOpravna||[], 'Foto – opravna'],
+    ];
+    skupiny.forEach(([arr, popis])=>{
+      arr.forEach(p=>{
+        if(!p) return;
+        if(!photoPreviewSrc(p) && !(p && typeof p==='object' && p.driveFileId)) return;
+        items.push({p, zdroj:'nakladka', id:n.id, datum:n.datum, nadpis:(n.typ==='vykladka'?'Vykládka':'Nakládka')+' — '+(n.partner||'?'), popis});
+      });
+    });
+  });
+  ukoly.forEach(u=>{
+    const p = u.foto;
+    if(!p) return;
+    if(!photoPreviewSrc(p) && !(p && typeof p==='object' && p.driveFileId)) return;
+    items.push({p, zdroj:'ukol', id:u.id, datum:u.termin, nadpis:u.nazev||'Úkol', popis:'Foto u úkolu'});
+  });
+  items.sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
+  return items;
+}
+function galerieTileHtml(it, idx){
+  const src = photoPreviewSrc(it.p);
+  if(src) return `<div class="gal-tile" onclick="galerieOtevri(${idx})" title="${escapeAttr(it.nadpis+' · '+it.popis)}"><img src="${src}"></div>`;
+  const fid = it.p && typeof it.p==='object' && it.p.driveFileId;
+  if(fid) return `<div class="gal-tile" data-foto-lazy="${fid}" onclick="galerieOtevri(${idx})" title="${escapeAttr(it.nadpis+' · '+it.popis)}"><div class="photo-thumb-loading">⏳</div></div>`;
+  return '';
+}
+function renderGalerie(){
+  document.getElementById('fab-wrap').style.display='none';
+  const items = galerieCollect();
+  window._galerieItems = items;
+  const list = document.getElementById('galerie-list');
+  if(!items.length){ list.innerHTML = '<div class="empty" style="padding:16px">Zatím žádné nahrané fotky.</div>'; return; }
+  const order = [], groups = {};
+  items.forEach((it,idx)=>{
+    const key = it.datum || '—';
+    if(!groups[key]){ groups[key]=[]; order.push(key); }
+    groups[key].push(idx);
+  });
+  list.innerHTML = order.map(datum=>{
+    const idxs = groups[datum];
+    let hdr = 'Bez data';
+    const parts = (datum||'').split('-');
+    if(parts.length===3) hdr = parts[2]+'.'+parts[1]+'.'+parts[0];
+    return `<div class="gal-group"><div class="ov-day-hdr">${hdr}</div><div class="gal-grid">${idxs.map(i=>galerieTileHtml(items[i], i)).join('')}</div></div>`;
+  }).join('');
+  hydrateFotoLazy(list);
+}
+function galerieOtevri(idx){
+  const it = window._galerieItems && window._galerieItems[idx];
+  if(!it) return;
+  if(it.zdroj==='nakladka') openNakladka(it.id); else openUkol(it.id);
+}
+
+/* ============ SHEET HELPERS ============ */
+function openSheet(){ document.getElementById('overlay').classList.add('on'); }
+function closeSheet(){ document.getElementById('overlay').classList.remove('on'); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ============ INIT ============ */
+function renderAll(){
+  generujOpakujiciUkoly();
+  const s = activeScreen();
+  if(s==='prehled') renderPrehled();
+  if(s==='nakladky') renderNakladky();
+  if(s==='ukoly') renderUkoly();
+  if(s==='kapacita') renderKapacita();
+  if(s==='galerie') renderGalerie();
+  if(s==='profitabilita') renderProfitabilita();
+}
+// Role/jméno/viditelnost záložek se nastaví až v nastavRoliPoPrihlaseni() po přihlášení.
+// renderAll() se poprvé zavolá až po načtení dat z Firestore (viz maybeFinishLoading výše) A přihlášení.
+
+// Funkce volané z onclick atributů v HTML musí být na window, protože jsou v <script type="module">.
+window.doLogout = doLogout;
+window.setPerson = setPerson;
+window.switchTab = switchTab;
+window.switchToNakladka = switchToNakladka;
+window.weekNav = weekNav;
+window.pickDay = pickDay;
+window.setNakFilter = setNakFilter;
+window.openNakladka = openNakladka;
+window.nkRemovePhoto = nkRemovePhoto;
+window.nkAddPhotos = nkAddPhotos;
+window.nkToggleNewCustMat = nkToggleNewCustMat;
+window.nkSaveNewCustomer = nkSaveNewCustomer;
+window.nkCancelNewCustomer = nkCancelNewCustomer;
+window.nkPartnerSelect = nkPartnerSelect;
+window.nkSetTyp = nkSetTyp;
+window.nkSetOcekavano = nkSetOcekavano;
+window.nkRefreshDynamic = nkRefreshDynamic;
+window.nkMatField = nkMatField;
+window.nkAddMaterialRow = nkAddMaterialRow;
+window.nkRemoveMaterialRow = nkRemoveMaterialRow;
+window.nkPhoto = nkPhoto;
+window.nkSave = nkSave;
+window.nkDelete = nkDelete;
+window.openZakaznikList = openZakaznikList;
+window.openZakaznik = openZakaznik;
+window.zkToggleMat = zkToggleMat;
+window.zkSave = zkSave;
+window.zkDelete = zkDelete;
+window.renderZakaznikListSheet = renderZakaznikListSheet;
+window.openSablonyList = openSablonyList;
+window.openSablona = openSablona;
+window.renderSablonyListSheet = renderSablonyListSheet;
+window.renderSablonaSheet = renderSablonaSheet;
+window.sbSetFrekvence = sbSetFrekvence;
+window.sbSave = sbSave;
+window.sbDelete = sbDelete;
+window.setUkolFilter = setUkolFilter;
+window.openUkol = openUkol;
+window.ukSetPrio = ukSetPrio;
+window.ukPhoto = ukPhoto;
+window.ukAddComment = ukAddComment;
+window.ukSave = ukSave;
+window.ukDelete = ukDelete;
+window.planWeekNav = planWeekNav;
+window.planPickDay = planPickDay;
+window.openPlanCell = openPlanCell;
+window.plSetTyp = plSetTyp;
+window.plSave = plSave;
+window.plClear = plClear;
+window.closeSheet = closeSheet;
+window.showInfoSheet = showInfoSheet;
+window.setProfPeriod = setProfPeriod;
+window.saveSellPriceProf = saveSellPriceProf;
+window.galerieOtevri = galerieOtevri;
+</script>
+</body>
+</html>
