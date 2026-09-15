@@ -180,6 +180,10 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .photo-thumb-loading{color:var(--dim);font-size:12px;text-align:center;padding:14px 4px}
 .photo-thumb .photo-thumb-loading,.gal-tile .photo-thumb-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;padding:0}
 .gal-group{margin-bottom:16px}
+.gal-group-hdr{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+.gal-group-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.gal-group-title{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700}
+.gal-group-sub{font-size:12px;color:var(--dim);margin-top:1px}
 .gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 .gal-tile{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;background:var(--bg2)}
 .gal-tile img{width:100%;height:100%;object-fit:cover;display:block}
@@ -2294,7 +2298,9 @@ function plClear(workerName){
    Appka fotky nikdy veřejně nesdílí — náhledy tu jdou přes stejný soukromý
    Apps Script Web App jako u jednotlivých záznamů (viz nacistFotoNahled výš).
    Sbírá fotky ze všech nakládek/vykládek i úkolů, seřazené od nejnovějších,
-   klepnutím na dlaždici se otevře příslušný záznam. */
+   seskupené po jednotlivých záznamech (stejně jako složky na Disku — viz
+   skupinaNadpis/skupinaSub níž), klepnutím na dlaždici se otevře příslušný
+   záznam. */
 function galerieCollect(){
   const items = [];
   nakladky.forEach(n=>{
@@ -2304,11 +2310,15 @@ function galerieCollect(){
       [n.fotoTridirna||[], 'Foto – třídírna'],
       [n.fotoOpravna||[], 'Foto – opravna'],
     ];
+    const skupinaKlic = 'nakladka:'+n.id;
+    const skupinaNadpis = n.partner || '?';
+    const skupinaSub = (n.typ==='vykladka'?'Vykládka':'Nakládka')+' · '+fmtDate(n.datum);
+    const skupinaBarva = n.typ==='vykladka' ? '#4a9eff' : '#e67e22';
     skupiny.forEach(([arr, popis])=>{
       arr.forEach(p=>{
         if(!p) return;
         if(!photoPreviewSrc(p) && !(p && typeof p==='object' && p.driveFileId)) return;
-        items.push({p, zdroj:'nakladka', id:n.id, datum:n.datum, nadpis:(n.typ==='vykladka'?'Vykládka':'Nakládka')+' — '+(n.partner||'?'), popis});
+        items.push({p, zdroj:'nakladka', id:n.id, datum:n.datum, popis, skupinaKlic, skupinaNadpis, skupinaSub, skupinaBarva});
       });
     });
   });
@@ -2316,16 +2326,17 @@ function galerieCollect(){
     const p = u.foto;
     if(!p) return;
     if(!photoPreviewSrc(p) && !(p && typeof p==='object' && p.driveFileId)) return;
-    items.push({p, zdroj:'ukol', id:u.id, datum:u.termin, nadpis:u.nazev||'Úkol', popis:'Foto u úkolu'});
+    items.push({p, zdroj:'ukol', id:u.id, datum:u.termin, popis:'Foto u úkolu', skupinaKlic:'ukol:'+u.id, skupinaNadpis:u.nazev||'Úkol', skupinaSub:'Úkol · '+fmtDate(u.termin), skupinaBarva:'#8e8e93'});
   });
   items.sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
   return items;
 }
 function galerieTileHtml(it, idx){
+  const titleTxt = it.skupinaNadpis+' · '+it.popis;
   const src = photoPreviewSrc(it.p);
-  if(src) return `<div class="gal-tile" onclick="galerieOtevri(${idx})" title="${escapeAttr(it.nadpis+' · '+it.popis)}"><img src="${src}"></div>`;
+  if(src) return `<div class="gal-tile" onclick="galerieOtevri(${idx})" title="${escapeAttr(titleTxt)}"><img src="${src}"></div>`;
   const fid = it.p && typeof it.p==='object' && it.p.driveFileId;
-  if(fid) return `<div class="gal-tile" data-foto-lazy="${fid}" onclick="galerieOtevri(${idx})" title="${escapeAttr(it.nadpis+' · '+it.popis)}"><div class="photo-thumb-loading">⏳</div></div>`;
+  if(fid) return `<div class="gal-tile" data-foto-lazy="${fid}" onclick="galerieOtevri(${idx})" title="${escapeAttr(titleTxt)}"><div class="photo-thumb-loading">⏳</div></div>`;
   return '';
 }
 function renderGalerie(){
@@ -2336,16 +2347,22 @@ function renderGalerie(){
   if(!items.length){ list.innerHTML = '<div class="empty" style="padding:16px">Zatím žádné nahrané fotky.</div>'; return; }
   const order = [], groups = {};
   items.forEach((it,idx)=>{
-    const key = it.datum || '—';
-    if(!groups[key]){ groups[key]=[]; order.push(key); }
-    groups[key].push(idx);
+    const key = it.skupinaKlic;
+    if(!groups[key]){ groups[key]={info:it, idxs:[]}; order.push(key); }
+    groups[key].idxs.push(idx);
   });
-  list.innerHTML = order.map(datum=>{
-    const idxs = groups[datum];
-    let hdr = 'Bez data';
-    const parts = (datum||'').split('-');
-    if(parts.length===3) hdr = parts[2]+'.'+parts[1]+'.'+parts[0];
-    return `<div class="gal-group"><div class="ov-day-hdr">${hdr}</div><div class="gal-grid">${idxs.map(i=>galerieTileHtml(items[i], i)).join('')}</div></div>`;
+  list.innerHTML = order.map(key=>{
+    const g = groups[key];
+    return `<div class="gal-group">
+      <div class="gal-group-hdr">
+        <div class="gal-group-dot" style="background:${g.info.skupinaBarva}"></div>
+        <div>
+          <div class="gal-group-title">${escapeHtml(g.info.skupinaNadpis)}</div>
+          <div class="gal-group-sub">${escapeHtml(g.info.skupinaSub)}</div>
+        </div>
+      </div>
+      <div class="gal-grid">${g.idxs.map(i=>galerieTileHtml(items[i], i)).join('')}</div>
+    </div>`;
   }).join('');
   hydrateFotoLazy(list);
 }
