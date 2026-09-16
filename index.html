@@ -804,6 +804,18 @@ function smazatFotoZDrive(driveFileId){
   return fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'smazat', driveFileId})}).catch(()=>{});
 }
 
+/* ============ TELEGRAM NOTIFIKACE ============
+   Viz claude/notifikace_telegram_navrh.md — appka posílá zprávu hned po úspěšném
+   uložení, přes stejný soukromý Apps Script Web App jako fotky. V testovací fázi
+   (16.9.2026) je nastavený jen Lukášův chat_id na straně Apps Scriptu, takže
+   appka zatím posílá vždy jen jemu (prijemci se dál nezadávají) — až přibudou
+   Ondřej a Martin, přibude zde i výběr příjemců podle role. Fire-and-forget:
+   selhání notifikace nesmí appce nijak bránit v uložení dat. */
+function poslatNotifikaci(text){
+  if(!driveUploadEnabled()) return;
+  fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'notifikace', text})}).catch(()=>{});
+}
+
 /* ============ SOUKROMÝ NÁHLED ULOŽENÝCH FOTEK ============
    Appka fotky po uložení dřív vůbec nezobrazovala (jen odkaz "na Disku") — teď
    umí dotáhnout reálný náhled přes stejný Apps Script Web App (soukromý, běží
@@ -1774,6 +1786,7 @@ function nkSave(stav){
     return;
   }
 
+  const byloNove = !!d._isNew;
   d.stav = stav;
   delete d._isNew;
   d.provedl = person; // kdo fyzicky nakládal/vykládal — vždy přepsáno na aktuálně přihlášeného, bez ručního zadávání
@@ -1783,12 +1796,20 @@ function nkSave(stav){
   fbSet('nakladky', d.id, d);
   closeSheet(); renderNakladky();
   toast(stav==='vyrizene' ? '✓ Označeno jako vyřízeno' : '✓ Uloženo');
+
+  const nkTypLabel = d.typ==='vykladka' ? 'Vykládka' : 'Nakládka';
+  const nkPopis = (d.partner||'?')+' – '+fmtDate(d.datum)+(d.cas?' '+d.cas:'');
+  if(byloNove) poslatNotifikaci('🆕 Nová '+nkTypLabel.toLowerCase()+': '+nkPopis);
+  else if(stav==='vyrizene') poslatNotifikaci('✅ '+nkTypLabel+' vyřízena: '+nkPopis);
+  else poslatNotifikaci('✏️ '+nkTypLabel+' upravena: '+nkPopis);
 }
 function nkDelete(id){
+  const rec = nakladky.find(n=>n.id===id);
   nakladky = nakladky.filter(n=>n.id!==id);
   fbDelete('nakladky', id);
   closeSheet(); renderNakladky();
   toast('🗑 Smazáno');
+  if(rec) poslatNotifikaci('🗑 Zrušena '+(rec.typ==='vykladka'?'vykládka':'nakládka')+': '+(rec.partner||'?')+' – '+fmtDate(rec.datum));
 }
 
 /* ============ SHEET: ZÁKAZNÍCI (databáze dodavatelů/odběratelů) ============ */
@@ -2161,16 +2182,23 @@ function ukSave(stav){
     d.foto = stripPendingAndDataUrl(d.foto);
   }
   if(!docSizeOk(d)){ toast('⚠ Moc velká fotka — vyfoť znovu nebo ji smaž'); return; }
+  const byloNoveUk = !!d._isNew;
   delete d._isNew;
   const idx = ukoly.findIndex(u=>u.id===d.id);
   if(idx>=0) ukoly[idx]=d; else ukoly.unshift(d);
   fbSet('ukoly', d.id, d); closeSheet(); renderUkoly();
   toast(stav==='vyrizene' ? '✓ Úkol vyřízen' : '✓ Uloženo');
+
+  if(byloNoveUk) poslatNotifikaci('🆕 Nový úkol: '+d.nazev+' (řešitel: '+d.resitel+', termín '+fmtDate(d.termin)+')');
+  else if(stav==='vyrizene') poslatNotifikaci('✅ Úkol dokončen: '+d.nazev);
+  else poslatNotifikaci('✏️ Úkol upraven: '+d.nazev);
 }
 function ukDelete(id){
+  const ukRec = ukoly.find(u=>u.id===id);
   ukoly = ukoly.filter(u=>u.id!==id);
   fbDelete('ukoly', id); closeSheet(); renderUkoly();
   toast('🗑 Smazáno');
+  if(ukRec) poslatNotifikaci('🗑 Zrušen úkol: '+ukRec.nazev);
 }
 
 /* ============ RENDER: PLÁN PRÁCE ============ */
