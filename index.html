@@ -458,6 +458,18 @@ const WORKERS = [
 ];
 const STREDISKA = {tridirna:{label:'Třídírna',color:'#e6a800'}, sklad:{label:'Sklad',color:'#27ae60'}, opravna:{label:'Opravna',color:'#e05555'}};
 const WEEKDAY_CS=['Ne','Po','Út','St','Čt','Pá','So'];
+/* Překup = přímý kšeft, kamion jede rovnou od dodavatele k zákazníkovi, sklad Palety Vít do toho
+   nevstupuje (na rozdíl od Nakládky/Vykládky). Proto má vlastní pole: dodavatel+adresa nakládky,
+   zákazník+adresa vykládky. Materiál (typ palety + počet) řeší stejně jako Nakládka — bez DL/fotek. */
+const NK_TYP_META = {
+  vykladka:{label:'Vykládka', color:'#4a9eff', gender:'f'},
+  nakladka:{label:'Nakládka', color:'#e67e22', gender:'f'},
+  prekup:{label:'Překup', color:'#8e44ad', gender:'m'},
+};
+function nkTypLabel(typ){ return (NK_TYP_META[typ]||NK_TYP_META.nakladka).label; }
+function nkTypColor(typ){ return (NK_TYP_META[typ]||NK_TYP_META.nakladka).color; }
+function nkTypGenderM(typ){ return (NK_TYP_META[typ]||NK_TYP_META.nakladka).gender==='m'; }
+function nkPartnerDisplay(n){ return n.typ==='prekup' ? ((n.dodavatel||'?')+' → '+(n.zakaznik||'?')) : (n.partner||'?'); }
 
 // Katalog typů palet appky Výkup palet (projekt vykup-palet) — jména i výchozí
 // výkupní ceny odpovídají appce, viz claude/vykup_palet_multiuser_profitabilita_navrh.md.
@@ -1133,9 +1145,9 @@ function renderPrehled(){
   const rowHtml = n => {
     const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
     return `<div class="item" style="margin-bottom:6px" onclick="switchToNakladka('${n.id}')">
-      <div class="item-dot" style="background:${n.typ==='vykladka'?'#4a9eff':'#e67e22'}"></div>
+      <div class="item-dot" style="background:${nkTypColor(n.typ)}"></div>
       <div class="item-body">
-        <div class="item-title">${n.cas} · ${n.typ==='vykladka'?'Vykládka':'Nakládka'} — ${n.partner}
+        <div class="item-title">${n.cas} · ${nkTypLabel(n.typ)} — ${nkPartnerDisplay(n)}
           <span class="pill ${n.stav==='vyrizene'?'pill-done':'pill-new'}">${n.stav==='vyrizene'?'Vyřízeno':'Nové'}</span>
         </div>
         <div class="item-meta">${matSum}</div>
@@ -1312,7 +1324,7 @@ function renderWeekStrip(){
   document.getElementById('week-strip').innerHTML = days.map(d=>{
     const iso=dateToStr(d);
     const items = nakladky.filter(n=>n.datum===iso);
-    const dots = items.slice(0,3).map(n=>`<div class="day-dot" style="background:${n.typ==='vykladka'?'#4a9eff':'#e67e22'}"></div>`).join('');
+    const dots = items.slice(0,3).map(n=>`<div class="day-dot" style="background:${nkTypColor(n.typ)}"></div>`).join('');
     return `<div class="day-cell${iso===todayStr()?' today':''}${iso===selDay?' on':''}" onclick="pickDay('${iso}')">
       <div class="day-wd">${WEEKDAY_CS[d.getDay()]}</div>
       <div class="day-num">${d.getDate()}</div>
@@ -1344,9 +1356,9 @@ function renderNakladky(){
     el.innerHTML = list.map(n=>{
       const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
       return `<div class="item" onclick="openNakladka('${n.id}')">
-        <div class="item-dot" style="background:${n.typ==='vykladka'?'#4a9eff':'#e67e22'}"></div>
+        <div class="item-dot" style="background:${nkTypColor(n.typ)}"></div>
         <div class="item-body">
-          <div class="item-title">${n.typ==='vykladka'?'Vykládka':'Nakládka'} · ${n.partner}
+          <div class="item-title">${nkTypLabel(n.typ)} · ${nkPartnerDisplay(n)}
             <span class="pill ${n.stav==='vyrizene'?'pill-done':'pill-new'}">${n.stav==='vyrizene'?'Vyřízeno':'Nové'}</span>
           </div>
           <div class="item-meta">${fmtDate(n.datum)} ${n.cas} · ${matSum}</div>
@@ -1357,7 +1369,7 @@ function renderNakladky(){
 
   const fab = document.getElementById('fab-btn');
   if(role==='owner'){
-    fab.textContent='+ Nová nakládka / vykládka';
+    fab.textContent='+ Nový záznam';
     fab.onclick=()=>openNakladka(null);
     document.getElementById('fab-wrap').style.display='block';
   } else {
@@ -1369,11 +1381,13 @@ function setNakFilter(v){ nakFilter=v; renderNakladky(); }
 /* ============ SHEET: NAKLÁDKA / VYKLÁDKA ============ */
 function openNakladka(id){
   const rec = id ? nakladky.find(n=>n.id===id) : null;
-  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: person, ts:Date.now(), _isNew:!rec};
+  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', dodavatel:'', zakaznik:'', adresaNakladky:'', adresaVykladky:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: person, ts:Date.now(), _isNew:!rec};
   window._nkData = data;
   window._nkAddingCustomer = false;
   window._nkNewCustName = '';
   window._nkNewCustMats = [];
+  window._nkAddingDod = false; window._nkNewDodName=''; window._nkNewDodMats=[];
+  window._nkAddingZak = false; window._nkNewZakName=''; window._nkNewZakMats=[];
   renderNakladkaSheet();
   openSheet();
 }
@@ -1384,6 +1398,10 @@ function nkSyncFields(){
   if(g('nk-datum')) d.datum = g('nk-datum').value;
   if(g('nk-cas')) d.cas = g('nk-cas').value;
   if(g('nk-partner')) d.partner = g('nk-partner').value;
+  if(g('nk-dodavatel')) d.dodavatel = g('nk-dodavatel').value;
+  if(g('nk-zakaznik')) d.zakaznik = g('nk-zakaznik').value;
+  if(g('nk-adresa-nakladky')) d.adresaNakladky = g('nk-adresa-nakladky').value;
+  if(g('nk-adresa-vykladky')) d.adresaVykladky = g('nk-adresa-vykladky').value;
   if(g('nk-poznamka')) d.poznamka = g('nk-poznamka').value;
   if(g('nk-neshoda-komentar')) d.neshodaKomentar = g('nk-neshoda-komentar').value;
 }
@@ -1548,13 +1566,14 @@ function renderNakladkaSheet(){
   sheet.innerHTML = `
     <div class="sheet-handle"></div>
     <button class="close-x" onclick="closeSheet()">✕</button>
-    <div class="sheet-title">${isNew?'Nová nakládka / vykládka':(data.typ==='vykladka'?'Vykládka':'Nakládka')+' — '+data.partner}</div>
+    <div class="sheet-title">${isNew?'Nová nakládka / vykládka / překup':nkTypLabel(data.typ)+' — '+nkPartnerDisplay(data)}</div>
     <div class="sheet-sub">${isNew?'':'Založil '+data.zalozil+(data.provedl?' · Nakládal/vykládal '+data.provedl:'')}</div>
 
     <div class="field-lbl">Typ</div>
     <div class="seg">
       <div class="seg-btn ${data.typ==='vykladka'?'on':''}" ${canEditPlan?`onclick="nkSetTyp('vykladka')"`:''}>Vykládka</div>
       <div class="seg-btn ${data.typ==='nakladka'?'on':''}" ${canEditPlan?`onclick="nkSetTyp('nakladka')"`:''}>Nakládka</div>
+      <div class="seg-btn ${data.typ==='prekup'?'on':''}" ${canEditPlan?`onclick="nkSetTyp('prekup')"`:''}>Překup</div>
     </div>
 
     <div class="row2">
@@ -1568,8 +1587,20 @@ function renderNakladkaSheet(){
       </div>
     </div>
 
+    ${data.typ==='prekup' ? `
+    <div class="field-lbl">Dodavatel (odkud se nakládá)</div>
+    ${nkPartyFieldHtml(data, canEditPlan, 'dodavatel')}
+    <div class="field-lbl">Adresa nakládky</div>
+    <input class="finp" id="nk-adresa-nakladky" placeholder="Ulice, město" value="${escapeAttr(data.adresaNakladky||'')}" ${canEditPlan?'':'disabled'}>
+
+    <div class="field-lbl">Zákazník (kam se veze)</div>
+    ${nkPartyFieldHtml(data, canEditPlan, 'zakaznik')}
+    <div class="field-lbl">Adresa vykládky</div>
+    <input class="finp" id="nk-adresa-vykladky" placeholder="Ulice, město" value="${escapeAttr(data.adresaVykladky||'')}" ${canEditPlan?'':'disabled'}>
+    ` : `
     <div class="field-lbl">Dodavatel / odběratel</div>
     ${nkPartnerFieldHtml(data, canEditPlan)}
+    `}
 
     ${data.typ==='vykladka' ? `
     <div class="field-lbl">Očekávaný stav (dle domluvy s dodavatelem)</div>
@@ -1701,6 +1732,107 @@ function nkPartnerSelect(value){
   }
   renderNakladkaSheet();
 }
+/* ============ PŘEKUP: dvojice polí dodavatel/zákazník (stejný vzor jako nkPartnerFieldHtml,
+   ale parametrizovaný přes 'key', protože Překup potřebuje OBĚ firmy zvlášť, ne jednu společnou) */
+function nkPartyStateKeys(key){
+  return key==='dodavatel'
+    ? {adding:'_nkAddingDod', name:'_nkNewDodName', mats:'_nkNewDodMats'}
+    : {adding:'_nkAddingZak', name:'_nkNewZakName', mats:'_nkNewZakMats'};
+}
+function nkPartyFieldHtml(data, canEditPlan, key){
+  if(!canEditPlan){
+    return `<input class="finp" value="${escapeAttr(data[key]||'')}" disabled>`;
+  }
+  const sk = nkPartyStateKeys(key);
+  const matched = zakaznici.find(z=>z.nazev===data[key]);
+  const addingNew = !!window[sk.adding];
+  const manualMode = !addingNew && !matched && !!data[key];
+  let html = `
+    <select class="finp" id="nk-${key}-select" onchange="nkPartySelect('${key}',this.value)">
+      <option value="" ${!matched && !manualMode && !addingNew ? 'selected':''}>— vyber ze seznamu —</option>
+      ${[...zakaznici].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(z=>`<option value="${z.id}" ${matched && matched.id===z.id ? 'selected':''}>${escapeHtml(z.nazev)}</option>`).join('')}
+      <option value="__manual__" ${manualMode?'selected':''}>Jiná firma (nezadat do databáze)</option>
+      <option value="__new__" ${addingNew?'selected':''}>+ Nový zákazník…</option>
+    </select>
+  `;
+  if(manualMode){
+    html += `<input class="finp" id="nk-${key}" style="margin-top:8px" placeholder="Název firmy" value="${escapeAttr(data[key]||'')}" oninput="window._nkData['${key}']=this.value">`;
+  }
+  if(addingNew){
+    html += nkNewPartyFormHtml(key);
+  }
+  return html;
+}
+function nkNewPartyFormHtml(key){
+  const sk = nkPartyStateKeys(key);
+  const mats = window[sk.mats] || [];
+  return `
+    <div class="card" style="margin-top:8px">
+      <div class="field-lbl" style="padding-top:0">Nový zákazník</div>
+      <input class="finp" id="nk-newparty-${key}-name" placeholder="Název firmy" value="${escapeAttr(window[sk.name]||'')}" oninput="window['${sk.name}']=this.value">
+      <div class="field-lbl">Obvyklý materiál (lze víc)</div>
+      <div class="chips">
+        ${PALLETS.map(p=>`<button type="button" class="chip${mats.includes(p)?' on':''}" onclick="nkToggleNewPartyMat('${key}','${p}')">${p}</button>`).join('')}
+      </div>
+      <div style="height:6px"></div>
+      <button class="btn btn-primary" onclick="nkSaveNewParty('${key}')">✓ Uložit zákazníka a použít</button>
+      <button class="btn" onclick="nkCancelNewParty('${key}')">Zrušit</button>
+    </div>
+  `;
+}
+function nkToggleNewPartyMat(key,p){
+  const sk = nkPartyStateKeys(key);
+  window[sk.mats] = window[sk.mats] || [];
+  const i = window[sk.mats].indexOf(p);
+  if(i>=0) window[sk.mats].splice(i,1); else window[sk.mats].push(p);
+  renderNakladkaSheet();
+}
+function nkSaveNewParty(key){
+  const sk = nkPartyStateKeys(key);
+  const name = (window[sk.name]||'').trim();
+  if(!name){ toast('⚠ Zadej název firmy'); return; }
+  const mats = (window[sk.mats] && window[sk.mats].length) ? window[sk.mats].slice() : [PALLETS[0]];
+  const z = {id:uid(), nazev:name, materialy:mats};
+  zakaznici.push(z); fbSet('zakaznici', z.id, z);
+  const d = window._nkData;
+  d[key] = z.nazev;
+  if(key==='dodavatel') d.material = mats.map(typ=>({typ, dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}));
+  window[sk.adding]=false; window[sk.name]=''; window[sk.mats]=[];
+  toast('✓ Zákazník uložen do databáze');
+  renderNakladkaSheet();
+}
+function nkCancelNewParty(key){
+  window[nkPartyStateKeys(key).adding]=false;
+  renderNakladkaSheet();
+}
+function nkPartySelect(key,value){
+  const sk = nkPartyStateKeys(key);
+  const d = window._nkData;
+  if(value===''){
+    d[key]=''; window[sk.adding]=false;
+    renderNakladkaSheet(); return;
+  }
+  if(value==='__manual__'){
+    window[sk.adding]=false;
+    if(zakaznici.some(z=>z.nazev===d[key])) d[key]='';
+    renderNakladkaSheet(); return;
+  }
+  if(value==='__new__'){
+    window[sk.adding]=true; window[sk.name]=''; window[sk.mats]=[];
+    renderNakladkaSheet(); return;
+  }
+  window[sk.adding]=false;
+  const z = zakaznici.find(z=>z.id===value);
+  if(z){
+    d[key] = z.nazev;
+    if(key==='dodavatel'){
+      d.material = (z.materialy&&z.materialy.length?z.materialy:[PALLETS[0]]).map(typ=>({typ, dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}));
+      toast('✓ Materiál předvyplněn dle dodavatele — uprav počty');
+    }
+  }
+  renderNakladkaSheet();
+}
+
 function nkSetTyp(t){ nkSyncFields(); window._nkData.typ=t; renderNakladkaSheet(); }
 function nkSetOcekavano(v){ nkSyncFields(); window._nkData.ocekavano=v; renderNakladkaSheet(); }
 function renderMaterialRows(){
@@ -1797,11 +1929,12 @@ function nkSave(stav){
   closeSheet(); renderNakladky();
   toast(stav==='vyrizene' ? '✓ Označeno jako vyřízeno' : '✓ Uloženo');
 
-  const nkTypLabel = d.typ==='vykladka' ? 'Vykládka' : 'Nakládka';
-  const nkPopis = (d.partner||'?')+' – '+fmtDate(d.datum)+(d.cas?' '+d.cas:'');
-  if(byloNove) poslatNotifikaci('🆕 Nová '+nkTypLabel.toLowerCase()+': '+nkPopis);
-  else if(stav==='vyrizene') poslatNotifikaci('✅ '+nkTypLabel+' vyřízena: '+nkPopis);
-  else poslatNotifikaci('✏️ '+nkTypLabel+' upravena: '+nkPopis);
+  const typLabel = nkTypLabel(d.typ);
+  const isM = nkTypGenderM(d.typ);
+  const nkPopis = nkPartnerDisplay(d)+' – '+fmtDate(d.datum)+(d.cas?' '+d.cas:'');
+  if(byloNove) poslatNotifikaci('🆕 Nov'+(isM?'ý':'á')+' '+typLabel.toLowerCase()+': '+nkPopis);
+  else if(stav==='vyrizene') poslatNotifikaci('✅ '+typLabel+(isM?' vyřízen: ':' vyřízena: ')+nkPopis);
+  else poslatNotifikaci('✏️ '+typLabel+(isM?' upraven: ':' upravena: ')+nkPopis);
 }
 function nkDelete(id){
   const rec = nakladky.find(n=>n.id===id);
@@ -1809,7 +1942,7 @@ function nkDelete(id){
   fbDelete('nakladky', id);
   closeSheet(); renderNakladky();
   toast('🗑 Smazáno');
-  if(rec) poslatNotifikaci('🗑 Zrušena '+(rec.typ==='vykladka'?'vykládka':'nakládka')+': '+(rec.partner||'?')+' – '+fmtDate(rec.datum));
+  if(rec) poslatNotifikaci('🗑 Zrušen'+(nkTypGenderM(rec.typ)?'':'a')+' '+nkTypLabel(rec.typ).toLowerCase()+': '+nkPartnerDisplay(rec)+' – '+fmtDate(rec.datum));
 }
 
 /* ============ SHEET: ZÁKAZNÍCI (databáze dodavatelů/odběratelů) ============ */
@@ -2339,9 +2472,9 @@ function galerieCollect(){
       [n.fotoOpravna||[], 'Foto – opravna'],
     ];
     const skupinaKlic = 'nakladka:'+n.id;
-    const skupinaNadpis = n.partner || '?';
-    const skupinaSub = (n.typ==='vykladka'?'Vykládka':'Nakládka')+' · '+fmtDate(n.datum);
-    const skupinaBarva = n.typ==='vykladka' ? '#4a9eff' : '#e67e22';
+    const skupinaNadpis = nkPartnerDisplay(n);
+    const skupinaSub = nkTypLabel(n.typ)+' · '+fmtDate(n.datum);
+    const skupinaBarva = nkTypColor(n.typ);
     skupiny.forEach(([arr, popis])=>{
       arr.forEach(p=>{
         if(!p) return;
