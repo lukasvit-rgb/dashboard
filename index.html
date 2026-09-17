@@ -370,7 +370,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <button class="tabbar-btn on" id="tab-prehled" onclick="switchTab('prehled',this)"><span class="ic">🏠</span><span class="lbl">Přehled</span></button>
   <button class="tabbar-btn" id="tab-nakladky" onclick="switchTab('nakladky',this)"><span class="ic">📦</span><span class="lbl">Nakládky</span></button>
   <button class="tabbar-btn" id="tab-ukoly" onclick="switchTab('ukoly',this)"><span class="ic">✅</span><span class="lbl">Úkoly</span></button>
-  <button class="tabbar-btn" id="tab-kapacita" onclick="switchTab('kapacita',this)"><span class="ic">👷</span><span class="lbl">Plán práce</span></button>
+  <button class="tabbar-btn" id="tab-kapacita" onclick="switchTab('kapacita',this)" style="display:none"><span class="ic">👷</span><span class="lbl">Plán práce</span></button>
   <button class="tabbar-btn" id="tab-galerie" onclick="switchTab('galerie',this)"><span class="ic">📷</span><span class="lbl">Galerie</span></button>
   <button class="tabbar-btn" id="tab-todo" onclick="switchTab('todo',this)"><span class="ic">📝</span><span class="lbl">To-do</span></button>
   <button class="tabbar-btn" id="tab-profitabilita" onclick="switchTab('profitabilita',this)" style="display:none"><span class="ic">💰</span><span class="lbl">Profit</span></button>
@@ -983,10 +983,12 @@ function nastavRoliPoPrihlaseni(osoba){
   if (role==='sklad' && activeScreen()==='prehled'){
     switchTab('nakladky', document.getElementById('tab-nakladky'));
   }
-  // Profitabilita je jen pro Lukáše — i kdyby se do ní někdo jiný dostal starým
-  // odkazem/historií prohlížeče, přesměrujeme ho pryč hned po přihlášení.
-  document.getElementById('tab-profitabilita').style.display = jeLukas ? '' : 'none';
-  if (!jeLukas && activeScreen()==='profitabilita'){
+  // Profitabilita i Plán práce jsou dočasně schované ze záložek (17.9.2026 — teď
+  // nepotřeba, ať appka není přeplácaná). Kód i data zůstávají, jen se nezobrazují.
+  // I kdyby se tam někdo dostal starým odkazem/historií prohlížeče, přesměrujeme pryč.
+  document.getElementById('tab-profitabilita').style.display = 'none';
+  document.getElementById('tab-kapacita').style.display = 'none';
+  if (activeScreen()==='profitabilita' || activeScreen()==='kapacita'){
     switchTab('prehled', document.getElementById('tab-prehled'));
   }
   if (dbReady) renderAll();
