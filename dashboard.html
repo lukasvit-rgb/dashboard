@@ -13,7 +13,7 @@
 :root{
   --bg:#f2f2f7;--bg2:#ffffff;--bg3:#e8e8ed;--bg4:#d8d8dd;
   --border:#cccccc;--ink:#111111;--dim:#888888;--muted:#bbbbbb;
-  --green:#27ae60;--red:#e05555;--yellow:#e6a800;--blue:#2980b9;
+  --green:#27ae60;--red:#e05555;--yellow:#e6a800;--blue:#2980b9;--pink:#d6336c;
   --hh:52px;
   --tabbar-h:58px;
 }
@@ -87,11 +87,16 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .item-meta{font-size:12px;color:var(--dim);margin-top:2px}
 .item-side{text-align:right;flex-shrink:0}
 .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
-.pill-new{background:#e8f0fa;color:var(--blue)}
-.pill-done{background:#e5f5ec;color:var(--green)}
+.pill-new{background:#e5f5ec;color:var(--green)}
+.pill-done{background:#fbe6f0;color:var(--pink)}
 .pill-late{background:#fbe9e9;color:var(--red)}
 .pill-recurring{background:#eef2e6;color:#5c7a3a}
 .empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:14px}
+
+/* CELÉ BUŇKY BAREVNĚ PODLE STAVU (úkoly, nakládky/vykládky) */
+.item-nove{background:#eaf8f0;border-color:#bce3cc}
+.item-vyrizene{background:#fdebf3;border-color:#f0bcd8}
+.item-late{background:#fdecec;border-color:#f0bcbc}
 
 /* CHIPS */
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
@@ -1156,7 +1161,7 @@ function renderPrehled(){
   const tomorrow = dateToStr(addDays(new Date(),1));
   const rowHtml = n => {
     const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
-    return `<div class="item" style="margin-bottom:6px" onclick="switchToNakladka('${n.id}')">
+    return `<div class="item ${n.stav==='vyrizene'?'item-vyrizene':'item-nove'}" style="margin-bottom:6px" onclick="switchToNakladka('${n.id}')">
       <div class="item-dot" style="background:${nkTypColor(n.typ)}"></div>
       <div class="item-body">
         <div class="item-title">${n.cas} · ${nkTypLabel(n.typ)} — ${nkPartnerDisplay(n)}
@@ -1197,8 +1202,8 @@ function renderPrehled(){
   } else {
     osobniHtml += myTasks.map(u=>{
       const late = isOverdue(u);
-      return `<div class="item" style="margin-bottom:6px" onclick="openUkol('${u.id}')">
-        <div class="item-dot" style="background:${late?'var(--red)':'var(--blue)'}"></div>
+      return `<div class="item ${late?'item-late':'item-nove'}" style="margin-bottom:6px" onclick="openUkol('${u.id}')">
+        <div class="item-dot" style="background:${late?'var(--red)':'var(--green)'}"></div>
         <div class="item-body">
           <div class="item-title">${escapeHtml(u.nazev)} ${u.sablonaId?'<span class="pill pill-recurring">🔁 opakuje se</span>':''} ${late?'<span class="pill pill-late">Po termínu</span>':''}</div>
           <div class="item-meta">od ${u.zadavatel} · termín ${fmtDate(u.termin)}${u.komentare.length?' · 💬 '+u.komentare.length:''}</div>
@@ -1367,7 +1372,7 @@ function renderNakladky(){
   else{
     el.innerHTML = list.map(n=>{
       const matSum = n.material.map(m=>m.typ+' '+(m.realQty??m.dlQty)+'ks').join(', ');
-      return `<div class="item" onclick="openNakladka('${n.id}')">
+      return `<div class="item ${n.stav==='vyrizene'?'item-vyrizene':'item-nove'}" onclick="openNakladka('${n.id}')">
         <div class="item-dot" style="background:${nkTypColor(n.typ)}"></div>
         <div class="item-body">
           <div class="item-title">${nkTypLabel(n.typ)} · ${nkPartnerDisplay(n)}
@@ -2182,8 +2187,9 @@ function renderUkoly(){
   else {
     el.innerHTML = list.map(u=>{
       const late = isOverdue(u);
-      return `<div class="item" onclick="openUkol('${u.id}')">
-        <div class="item-dot" style="background:${late?'var(--red)':(u.stav==='vyrizene'?'var(--green)':'var(--blue)')}"></div>
+      const stavClass = late ? 'item-late' : (u.stav==='vyrizene' ? 'item-vyrizene' : 'item-nove');
+      return `<div class="item ${stavClass}" onclick="openUkol('${u.id}')">
+        <div class="item-dot" style="background:${late?'var(--red)':(u.stav==='vyrizene'?'var(--pink)':'var(--green)')}"></div>
         <div class="item-body">
           <div class="item-title">${escapeHtml(u.nazev)} ${u.sablonaId?'<span class="pill pill-recurring">🔁 opakuje se</span>':''} ${late?'<span class="pill pill-late">Po termínu</span>':(u.stav==='vyrizene'?'<span class="pill pill-done">Vyřízeno</span>':'')}</div>
           <div class="item-meta">${u.zadavatel} → ${u.resitel} · termín ${fmtDate(u.termin)} ${u.komentare.length?`· 💬 ${u.komentare.length}`:''}</div>
