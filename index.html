@@ -818,14 +818,26 @@ function smazatFotoZDrive(driveFileId){
 
 /* ============ TELEGRAM NOTIFIKACE ============
    Viz claude/notifikace_telegram_navrh.md — appka posílá zprávu hned po úspěšném
-   uložení, přes stejný soukromý Apps Script Web App jako fotky. V testovací fázi
-   (16.9.2026) je nastavený jen Lukášův chat_id na straně Apps Scriptu, takže
-   appka zatím posílá vždy jen jemu (prijemci se dál nezadávají) — až přibudou
-   Ondřej a Martin, přibude zde i výběr příjemců podle role. Fire-and-forget:
-   selhání notifikace nesmí appce nijak bránit v uložení dat. */
-function poslatNotifikaci(text){
+   uložení, přes stejný soukromý Apps Script Web App jako fotky. `prijemci` je pole
+   rolí ('lukas'/'ondrej'/'martin') — Apps Script k nim najde chat_id ze Script
+   Properties; Lukáš dostává vždy úplně všechno (přidává si ho appka i backend).
+   Když appka žádné prijemci nepošle (nebo dotyčný ještě nemá chat_id nastavený),
+   spadne to jen na Lukáše — stejné chování jako dřív. Fire-and-forget: selhání
+   notifikace nesmí appce nijak bránit v uložení dat. */
+function poslatNotifikaci(text, prijemci){
   if(!driveUploadEnabled()) return;
-  fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'notifikace', text})}).catch(()=>{});
+  fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'notifikace', text, prijemci})}).catch(()=>{});
+}
+/* Jméno v appce (zadavatel/řešitel/založil) → role pro poslatNotifikaci. */
+function osobaRole(jmeno){
+  if(jmeno==='Ondřej') return 'ondrej';
+  if(jmeno==='Martin') return 'martin';
+  return 'lukas';
+}
+/* Matice v notifikace_telegram_navrh.md: Martin dostává nové nakládky/vykládky
+   jen na dnešek/zítřek (změny a zrušení mu chodí bez ohledu na datum). */
+function nkJeDnesNeboZitra(datum){
+  return datum===todayStr() || datum===dateToStr(new Date(Date.now()+86400000));
 }
 
 /* ============ SOUKROMÝ NÁHLED ULOŽENÝCH FOTEK ============
@@ -1932,9 +1944,9 @@ function nkSave(stav){
   const typLabel = nkTypLabel(d.typ);
   const isM = nkTypGenderM(d.typ);
   const nkPopis = nkPartnerDisplay(d)+' – '+fmtDate(d.datum)+(d.cas?' '+d.cas:'');
-  if(byloNove) poslatNotifikaci('🆕 Nov'+(isM?'ý':'á')+' '+typLabel.toLowerCase()+': '+nkPopis);
+  if(byloNove) poslatNotifikaci('🆕 Nov'+(isM?'ý':'á')+' '+typLabel.toLowerCase()+': '+nkPopis, nkJeDnesNeboZitra(d.datum)?['martin']:[]);
   else if(stav==='vyrizene') poslatNotifikaci('✅ '+typLabel+(isM?' vyřízen: ':' vyřízena: ')+nkPopis);
-  else poslatNotifikaci('✏️ '+typLabel+(isM?' upraven: ':' upravena: ')+nkPopis);
+  else poslatNotifikaci('✏️ '+typLabel+(isM?' upraven: ':' upravena: ')+nkPopis, ['martin']);
 }
 function nkDelete(id){
   const rec = nakladky.find(n=>n.id===id);
@@ -1942,7 +1954,7 @@ function nkDelete(id){
   fbDelete('nakladky', id);
   closeSheet(); renderNakladky();
   toast('🗑 Smazáno');
-  if(rec) poslatNotifikaci('🗑 Zrušen'+(nkTypGenderM(rec.typ)?'':'a')+' '+nkTypLabel(rec.typ).toLowerCase()+': '+nkPartnerDisplay(rec)+' – '+fmtDate(rec.datum));
+  if(rec) poslatNotifikaci('🗑 Zrušen'+(nkTypGenderM(rec.typ)?'':'a')+' '+nkTypLabel(rec.typ).toLowerCase()+': '+nkPartnerDisplay(rec)+' – '+fmtDate(rec.datum), ['martin']);
 }
 
 /* ============ SHEET: ZÁKAZNÍCI (databáze dodavatelů/odběratelů) ============ */
@@ -2322,8 +2334,8 @@ function ukSave(stav){
   fbSet('ukoly', d.id, d); closeSheet(); renderUkoly();
   toast(stav==='vyrizene' ? '✓ Úkol vyřízen' : '✓ Uloženo');
 
-  if(byloNoveUk) poslatNotifikaci('🆕 Nový úkol: '+d.nazev+' (řešitel: '+d.resitel+', termín '+fmtDate(d.termin)+')');
-  else if(stav==='vyrizene') poslatNotifikaci('✅ Úkol dokončen: '+d.nazev);
+  if(byloNoveUk) poslatNotifikaci('🆕 Nový úkol: '+d.nazev+' (řešitel: '+d.resitel+', termín '+fmtDate(d.termin)+')', [osobaRole(d.resitel)]);
+  else if(stav==='vyrizene') poslatNotifikaci('✅ Úkol dokončen: '+d.nazev, [osobaRole(d.zadavatel)]);
   else poslatNotifikaci('✏️ Úkol upraven: '+d.nazev);
 }
 function ukDelete(id){
