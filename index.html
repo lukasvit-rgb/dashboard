@@ -98,6 +98,19 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .item-vyrizene{background:#fdebf3;border-color:#f0bcd8}
 .item-late{background:#fdecec;border-color:#f0bcbc}
 
+/* TO-DO (rychlý osobní seznam, soukromý pro každého přihlášeného) */
+.todo-add-row{display:flex;gap:8px;margin-bottom:14px}
+.todo-add-row .finp{flex:1}
+.todo-add-btn{width:46px;flex-shrink:0;background:var(--ink);color:#fff;border:none;border-radius:9px;font-size:24px;line-height:1;cursor:pointer}
+.todo-add-btn:active{opacity:.8}
+.todo-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.todo-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;cursor:pointer;background:var(--bg2)}
+.todo-item.done .todo-check{background:var(--green);border-color:var(--green)}
+.todo-text{flex:1;font-size:15px;word-break:break-word;cursor:pointer}
+.todo-item.done .todo-text{color:var(--muted);text-decoration:line-through}
+.todo-del{width:28px;height:28px;flex-shrink:0;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer}
+.todo-sep{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin:16px 0 8px}
+
 /* CHIPS */
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .chip{padding:7px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .12s}
@@ -340,6 +353,15 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <div id="galerie-list"></div>
 </div>
 
+<!-- TO-DO (rychlý osobní seznam, soukromý pro každého přihlášeného) -->
+<div class="screen" id="screen-todo">
+  <div class="todo-add-row">
+    <input type="text" id="todo-input" class="finp" placeholder="Napsat poznámku…" maxlength="300" onkeydown="if(event.key==='Enter'){addTodo();}">
+    <button class="todo-add-btn" onclick="addTodo()">+</button>
+  </div>
+  <div id="todo-list"></div>
+</div>
+
 <div class="fab-wrap" id="fab-wrap">
   <button class="fab" id="fab-btn"></button>
 </div>
@@ -350,6 +372,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <button class="tabbar-btn" id="tab-ukoly" onclick="switchTab('ukoly',this)"><span class="ic">✅</span><span class="lbl">Úkoly</span></button>
   <button class="tabbar-btn" id="tab-kapacita" onclick="switchTab('kapacita',this)"><span class="ic">👷</span><span class="lbl">Plán práce</span></button>
   <button class="tabbar-btn" id="tab-galerie" onclick="switchTab('galerie',this)"><span class="ic">📷</span><span class="lbl">Galerie</span></button>
+  <button class="tabbar-btn" id="tab-todo" onclick="switchTab('todo',this)"><span class="ic">📝</span><span class="lbl">To-do</span></button>
   <button class="tabbar-btn" id="tab-profitabilita" onclick="switchTab('profitabilita',this)" style="display:none"><span class="ic">💰</span><span class="lbl">Profit</span></button>
 </div>
 
@@ -431,6 +454,7 @@ const COL = {
   workplan: collection(fdb,'workplan'),
   zakaznici: collection(fdb,'zakaznici'),
   ukoly_sablony: collection(fdb,'ukoly_sablony'),
+  todo: collection(fdb,'todo'),
 };
 function fbSet(colName, id, data){
   setDoc(doc(COL[colName], id), JSON.parse(JSON.stringify(data))).catch(e=>{
@@ -516,6 +540,7 @@ let ukoly   = [];
 let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
 let zakaznici = []; // {id, nazev, materialy:[typ,...]}
 let sablony = []; // {id, nazev, popis, resitel, priorita, frekvence:'tydne'|'mesicne', den, aktivni, zadavatel, ts}
+let todoItems = []; // {id, person, text, done, ts} — rychlý osobní seznam, každý vidí jen svoje (filtr podle person)
 
 // Živá data Kasa/Výkup/Opravy (jiné Firebase projekty, viz vpdb/evdb výše) a
 // sdílené prodejní ceny pro Profitabilitu — mimo dbReady gate, appka na ně nečeká.
@@ -544,7 +569,7 @@ let planSelDay = todayStr();
    dokument, takže úpravy různých záznamů různými lidmi ve stejnou chvíli se
    nepřepisují — poslední zápis vyhrává jen v rámci JEDNOHO záznamu. */
 let dbReady = false;
-const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false};
+const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false, todo:false};
 function workPlanKeyFromDoc(id, data){ return (data.date||'')+'|'+(data.worker||''); }
 
 function maybeFinishLoading(){
@@ -588,6 +613,12 @@ onSnapshot(COL.zakaznici, snap => {
 onSnapshot(COL.ukoly_sablony, snap => {
   sablony = snap.docs.map(d=>d.data());
   loaded.sablony = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.todo, snap => {
+  todoItems = snap.docs.map(d=>d.data());
+  loaded.todo = true;
   maybeFinishLoading(); if(dbReady) renderAll();
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
 
@@ -2551,6 +2582,53 @@ function galerieOtevri(idx){
   if(it.zdroj==='nakladka') openNakladka(it.id); else openUkol(it.id);
 }
 
+/* ============ RENDER: TO-DO (rychlý osobní seznam) ============
+   Každý vidí a upravuje jen svoje položky (filtr podle person) — jednoduchý
+   soukromý seznam k rychlému zapsání, náhrada papírku. Bez termínu/přiřazení,
+   jen text + hotovo/nehotovo. */
+function renderTodo(){
+  document.getElementById('fab-wrap').style.display='none';
+  const mine = todoItems.filter(t=>t.person===person);
+  const otevrene = mine.filter(t=>!t.done).sort((a,b)=>b.ts-a.ts);
+  const hotove = mine.filter(t=>t.done).sort((a,b)=>b.ts-a.ts);
+
+  const itemHtml = t => `<div class="todo-item ${t.done?'done':''}">
+      <div class="todo-check" onclick="toggleTodo('${t.id}')">${t.done?'✓':''}</div>
+      <div class="todo-text" onclick="toggleTodo('${t.id}')">${escapeHtml(t.text)}</div>
+      <button class="todo-del" onclick="deleteTodo('${t.id}')">✕</button>
+    </div>`;
+
+  const el = document.getElementById('todo-list');
+  let html = '';
+  if(!otevrene.length && !hotove.length){
+    html = '<div class="empty">Zatím žádné poznámky. Napiš první nahoře ⤴</div>';
+  } else {
+    html += otevrene.map(itemHtml).join('');
+    if(hotove.length){
+      html += `<div class="todo-sep">Hotovo (${hotove.length})</div>`;
+      html += hotove.map(itemHtml).join('');
+    }
+  }
+  el.innerHTML = html;
+}
+function addTodo(){
+  const inp = document.getElementById('todo-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  const item = {id:uid(), person, text, done:false, ts:Date.now()};
+  fbSet('todo', item.id, item);
+  inp.value='';
+  inp.focus();
+}
+function toggleTodo(id){
+  const t = todoItems.find(x=>x.id===id);
+  if(!t) return;
+  fbSet('todo', id, {...t, done:!t.done});
+}
+function deleteTodo(id){
+  fbDelete('todo', id);
+}
+
 /* ============ SHEET HELPERS ============ */
 function openSheet(){ document.getElementById('overlay').classList.add('on'); }
 function closeSheet(){ document.getElementById('overlay').classList.remove('on'); }
@@ -2566,6 +2644,7 @@ function renderAll(){
   if(s==='ukoly') renderUkoly();
   if(s==='kapacita') renderKapacita();
   if(s==='galerie') renderGalerie();
+  if(s==='todo') renderTodo();
   if(s==='profitabilita') renderProfitabilita();
 }
 // Role/jméno/viditelnost záložek se nastaví až v nastavRoliPoPrihlaseni() po přihlášení.
@@ -2630,6 +2709,9 @@ window.showInfoSheet = showInfoSheet;
 window.setProfPeriod = setProfPeriod;
 window.saveSellPriceProf = saveSellPriceProf;
 window.galerieOtevri = galerieOtevri;
+window.addTodo = addTodo;
+window.toggleTodo = toggleTodo;
+window.deleteTodo = deleteTodo;
 </script>
 </body>
 </html>
