@@ -1736,12 +1736,14 @@ function nkNewCustomerFormHtml(){
   `;
 }
 function nkToggleNewCustMat(p){
+  nkSyncFields();
   window._nkNewCustMats = window._nkNewCustMats || [];
   const i = window._nkNewCustMats.indexOf(p);
   if(i>=0) window._nkNewCustMats.splice(i,1); else window._nkNewCustMats.push(p);
   renderNakladkaSheet();
 }
 function nkSaveNewCustomer(){
+  nkSyncFields();
   const name = (window._nkNewCustName||'').trim();
   if(!name){ toast('⚠ Zadej název firmy'); return; }
   const mats = (window._nkNewCustMats && window._nkNewCustMats.length) ? window._nkNewCustMats.slice() : [PALLETS[0]];
@@ -1755,10 +1757,12 @@ function nkSaveNewCustomer(){
   renderNakladkaSheet();
 }
 function nkCancelNewCustomer(){
+  nkSyncFields();
   window._nkAddingCustomer=false;
   renderNakladkaSheet();
 }
 function nkPartnerSelect(value){
+  nkSyncFields();
   const d = window._nkData;
   if(value===''){
     d.partner=''; window._nkAddingCustomer=false;
@@ -1831,6 +1835,7 @@ function nkNewPartyFormHtml(key){
   `;
 }
 function nkToggleNewPartyMat(key,p){
+  nkSyncFields();
   const sk = nkPartyStateKeys(key);
   window[sk.mats] = window[sk.mats] || [];
   const i = window[sk.mats].indexOf(p);
@@ -1838,6 +1843,7 @@ function nkToggleNewPartyMat(key,p){
   renderNakladkaSheet();
 }
 function nkSaveNewParty(key){
+  nkSyncFields();
   const sk = nkPartyStateKeys(key);
   const name = (window[sk.name]||'').trim();
   if(!name){ toast('⚠ Zadej název firmy'); return; }
@@ -1852,10 +1858,12 @@ function nkSaveNewParty(key){
   renderNakladkaSheet();
 }
 function nkCancelNewParty(key){
+  nkSyncFields();
   window[nkPartyStateKeys(key).adding]=false;
   renderNakladkaSheet();
 }
 function nkPartySelect(key,value){
+  nkSyncFields();
   const sk = nkPartyStateKeys(key);
   const d = window._nkData;
   if(value===''){
@@ -2345,6 +2353,7 @@ function ukAddComment(id){
   const inp = document.getElementById('uk-newcomment');
   const txt = inp.value.trim();
   if(!txt) return;
+  ukSyncFields();
   const autor = role==='sklad' ? 'Martin' : 'Lukáš';
   window._ukData.komentare.push({autor, text:txt, ts:Date.now()});
   const idx = ukoly.findIndex(u=>u.id===id);
