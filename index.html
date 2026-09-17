@@ -290,15 +290,15 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <div class="sec-lbl">Opravy dnes</div>
   <div class="ov-card" id="prehled-opravy"></div>
 
-  <div class="sec-lbl">Výkup dnes</div>
+  <div class="sec-lbl" id="sec-vykup-lbl">Výkup dnes</div>
   <div class="ov-card" id="prehled-vykup"></div>
 
-  <div class="sec-lbl">Třídění dnes</div>
+  <div class="sec-lbl" id="sec-trideni-lbl">Třídění dnes</div>
   <div class="ov-card" id="prehled-trideni"></div>
 
   <div class="snap-note" id="prehled-snap-note"></div>
 
-  <div class="sec-lbl">Kasa</div>
+  <div class="sec-lbl" id="sec-kasa-lbl">Kasa</div>
   <div class="ov-card" id="prehled-kasa"></div>
 </div>
 
@@ -977,12 +977,8 @@ function nastavRoliPoPrihlaseni(osoba){
   document.getElementById('user-badge').style.display = '';
   document.getElementById('user-badge-name').textContent = osoba.name;
   document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
-  // Skladník nevidí souhrnnou záložku Přehled (finanční čísla firmy) — jen svoje úkoly a nakládky.
-  const tabPrehled = document.getElementById('tab-prehled');
-  tabPrehled.style.display = (role==='owner') ? '' : 'none';
-  if (role==='sklad' && activeScreen()==='prehled'){
-    switchTab('nakladky', document.getElementById('tab-nakladky'));
-  }
+  // Skladník vidí záložku Přehled taky, ale zúženou — viz renderPrehled()
+  // (skryje se mu Výkup/Třídění/Kasa, nechá se Nakládky/Vykládky/Opravy/Osobní úkoly).
   // Profitabilita i Plán práce jsou dočasně schované ze záložek (17.9.2026 — teď
   // nepotřeba, ať appka není přeplácaná). Kód i data zůstávají, jen se nezobrazují.
   // I kdyby se tam někdo dostal starým odkazem/historií prohlížeče, přesměrujeme pryč.
@@ -1245,6 +1241,14 @@ function renderPrehled(){
     }).join('');
   }
   document.getElementById('prehled-osobni').innerHTML = osobniHtml;
+
+  // Skladník vidí v Přehledu jen Nakládky/Vykládky/Opravy dnes/Osobní úkoly —
+  // Výkup, Třídění, Kasa a poznámku o živých datech (finanční čísla firmy) nevidí.
+  const showFull = role==='owner';
+  ['sec-vykup-lbl','prehled-vykup','sec-trideni-lbl','prehled-trideni','prehled-snap-note','sec-kasa-lbl','prehled-kasa'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = showFull ? '' : 'none';
+  });
 
   document.getElementById('fab-wrap').style.display='none';
 }
