@@ -1998,7 +1998,7 @@ function nkSave(stav){
   const isM = nkTypGenderM(d.typ);
   const nkPopis = nkPartnerDisplay(d)+' – '+fmtDate(d.datum)+(d.cas?' '+d.cas:'');
   if(byloNove) poslatNotifikaci('🆕 Nov'+(isM?'ý':'á')+' '+typLabel.toLowerCase()+': '+nkPopis, ['martin','ondrej']);
-  else if(stav==='vyrizene') poslatNotifikaci('✅ '+typLabel+(isM?' vyřízen: ':' vyřízena: ')+nkPopis);
+  else if(stav==='vyrizene') poslatNotifikaci('✅ '+typLabel+(isM?' vyřízen: ':' vyřízena: ')+nkPopis, ['martin','ondrej']);
   else poslatNotifikaci('✏️ '+typLabel+(isM?' upraven: ':' upravena: ')+nkPopis, ['martin','ondrej']);
 }
 function nkDelete(id){
@@ -2389,16 +2389,16 @@ function ukSave(stav){
   fbSet('ukoly', d.id, d); closeSheet(); renderUkoly();
   toast(stav==='vyrizene' ? '✓ Úkol vyřízen' : '✓ Uloženo');
 
-  if(byloNoveUk) poslatNotifikaci('🆕 Nový úkol: '+d.nazev+' (řešitel: '+d.resitel+', termín '+fmtDate(d.termin)+')', [osobaRole(d.resitel)]);
-  else if(stav==='vyrizene') poslatNotifikaci('✅ Úkol dokončen: '+d.nazev, [osobaRole(d.zadavatel)]);
-  else poslatNotifikaci('✏️ Úkol upraven: '+d.nazev, [osobaRole(d.resitel), osobaRole(d.zadavatel)]);
+  if(byloNoveUk) poslatNotifikaci('🆕 Nový úkol: '+d.nazev+' (řešitel: '+d.resitel+', termín '+fmtDate(d.termin)+')', ['martin','ondrej']);
+  else if(stav==='vyrizene') poslatNotifikaci('✅ Úkol dokončen: '+d.nazev, ['martin','ondrej']);
+  else poslatNotifikaci('✏️ Úkol upraven: '+d.nazev, ['martin','ondrej']);
 }
 function ukDelete(id){
   const ukRec = ukoly.find(u=>u.id===id);
   ukoly = ukoly.filter(u=>u.id!==id);
   fbDelete('ukoly', id); closeSheet(); renderUkoly();
   toast('🗑 Smazáno');
-  if(ukRec) poslatNotifikaci('🗑 Zrušen úkol: '+ukRec.nazev, [osobaRole(ukRec.resitel), osobaRole(ukRec.zadavatel)]);
+  if(ukRec) poslatNotifikaci('🗑 Zrušen úkol: '+ukRec.nazev, ['martin','ondrej']);
 }
 
 /* ============ RENDER: PLÁN PRÁCE ============ */
