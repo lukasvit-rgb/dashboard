@@ -1511,8 +1511,10 @@ function nkPhotoGridHtml(data, field, label, hint, minCount){
     <div class="field-lbl">${label} ${minCount?`<span style="color:${count>=minCount?'var(--green)':'var(--red)'}">(${count}/${minCount})</span>`:''}</div>
     <div class="photo-grid">
       ${arr.map((p,i)=>nkPhotoTileHtml(p,field,i)).join('')}
-      <div class="photo-add" onclick="document.getElementById('nk-inp-${field}').click()">📷<br>přidat</div>
+      <div class="photo-add" onclick="document.getElementById('nk-cam-${field}').click()">📷<br>Vyfotit</div>
+      <div class="photo-add" onclick="document.getElementById('nk-inp-${field}').click()">🖼️<br>Galerie</div>
     </div>
+    <input type="file" accept="image/*" capture="environment" id="nk-cam-${field}" style="display:none" onchange="nkAddPhotos(event,'${field}')">
     <input type="file" accept="image/*" multiple id="nk-inp-${field}" style="display:none" onchange="nkAddPhotos(event,'${field}')">
     ${hint?`<div class="hint" style="margin:-2px 0 10px">${hint}</div>`:''}
   `;
@@ -1672,10 +1674,15 @@ function renderNakladkaSheet(){
 
     ${data.typ==='vykladka' ? `
     <div class="field-lbl">Foto dodacího listu</div>
-    <div class="photo-box" onclick="document.getElementById('nk-dlfoto-inp').click()">
-      ${photoBoxInnerHtml(data.dlFoto, '<div>📷 Klepni pro vyfocení / nahrání DL</div>')}
-      <div class="hint">${data.dlFoto?'Klepnutím nahradíš fotku':'Povinné — nahrává Martin při příjezdu'}</div>
+    <div class="photo-box">
+      ${photoBoxInnerHtml(data.dlFoto, '<div>📷 Vyfoť nebo nahraj DL</div>')}
+      <div class="hint">${data.dlFoto?'Tlačítkem níže fotku nahradíš':'Povinné — nahrává Martin při příjezdu'}</div>
     </div>
+    <div class="row2" style="margin:-2px 0 10px">
+      <button type="button" class="btn" onclick="document.getElementById('nk-dlfoto-cam').click()">📷 Vyfotit</button>
+      <button type="button" class="btn" onclick="document.getElementById('nk-dlfoto-inp').click()">🖼️ Galerie</button>
+    </div>
+    <input type="file" accept="image/*" capture="environment" id="nk-dlfoto-cam" style="display:none" onchange="nkPhoto(event,'dlFoto')">
     <input type="file" accept="image/*" id="nk-dlfoto-inp" style="display:none" onchange="nkPhoto(event,'dlFoto')">
 
     <div class="field-lbl">Rozpad podle střediska (po vyložení — vyplňuje ten, kdo skládá)</div>
@@ -2306,10 +2313,15 @@ function renderUkolSheet(){
     </div>
 
     <div class="field-lbl">Foto</div>
-    <div class="photo-box" onclick="document.getElementById('uk-foto-inp').click()">
-      ${photoBoxInnerHtml(d.foto, '<div>📷 Klepni pro přidání fotky</div>')}
+    <div class="photo-box">
+      ${photoBoxInnerHtml(d.foto, '<div>📷 Vyfoť nebo nahraj fotku</div>')}
       <div class="hint">Nepovinné, ale doporučené u hlášení problémů</div>
     </div>
+    <div class="row2" style="margin:-2px 0 10px">
+      <button type="button" class="btn" onclick="document.getElementById('uk-foto-cam').click()">📷 Vyfotit</button>
+      <button type="button" class="btn" onclick="document.getElementById('uk-foto-inp').click()">🖼️ Galerie</button>
+    </div>
+    <input type="file" accept="image/*" capture="environment" id="uk-foto-cam" style="display:none" onchange="ukPhoto(event)">
     <input type="file" accept="image/*" id="uk-foto-inp" style="display:none" onchange="ukPhoto(event)">
 
     ${!isNew ? `
