@@ -863,7 +863,12 @@ function smazatFotoZDrive(driveFileId){
    notifikace nesmí appce nijak bránit v uložení dat. */
 function poslatNotifikaci(text, prijemci){
   if(!driveUploadEnabled()) return;
-  fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'notifikace', text, prijemci})}).catch(()=>{});
+  const posli = () => fetch(DRIVE_UPLOAD_URL, {method:'POST', body: JSON.stringify({akce:'notifikace', text, prijemci})});
+  // Fire-and-forget, ale s jedním automatickým pokusem znovu (kdyby šlo o krátký výpadek
+  // signálu) — a pokud selže i podruhé, appka to aspoň viditelně (ale nerušivě) ukáže,
+  // místo aby se notifikace ztratila úplně beze stopy. Viz claude/notifikace_telegram_navrh.md, sekce 7.11.
+  posli().catch(()=> new Promise(r=>setTimeout(r,2000)).then(posli))
+    .catch(()=>{ toast('⚠ Telegram notifikace se nepodařilo odeslat — zkontroluj připojení'); });
 }
 /* Jméno v appce (zadavatel/řešitel/založil) → role pro poslatNotifikaci. */
 function osobaRole(jmeno){
