@@ -2265,6 +2265,7 @@ function openPreprava(id){
   const rec = id ? prepravy.find(p=>p.id===id) : null;
   window._pvData = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', partner:'', dopravce:'', trasa:'', termin:'', material:'', cena:'', poznamka:'', stav:'poptano', zalozil:person, ts:Date.now(), nakladkaId:null, _isNew:true};
   window._pvAddingDopravce = false; window._pvNewDopName=''; window._pvNewDopKontakt='';
+  window._pvAddingZakaznik = false; window._pvNewZakName='';
   renderPrepravaSheet();
   openSheet();
 }
@@ -2302,7 +2303,7 @@ function renderPrepravaSheet(){
     ${pvDopravceFieldHtml(d)}
 
     <div class="field-lbl">Zákazník / dodavatel (nepovinné)</div>
-    <input class="finp" id="pv-partner" placeholder="Název firmy" value="${escapeAttr(d.partner||'')}" oninput="window._pvData.partner=this.value">
+    ${pvPartnerFieldHtml(d)}
 
     <div class="field-lbl">Trasa</div>
     <input class="finp" id="pv-trasa" placeholder="Odkud → kam" value="${escapeAttr(d.trasa||'')}" oninput="window._pvData.trasa=this.value">
@@ -2399,6 +2400,70 @@ function pvSaveNewDopravce(){
 function pvCancelNewDopravce(){
   pvSyncFields();
   window._pvAddingDopravce=false;
+  renderPrepravaSheet();
+}
+
+/* Zákazník/dodavatel u přepravy — stejná databáze `zakaznici` jako u Nakládky
+   (viz nkPartnerFieldHtml), jen bez předvyplňování materiálu — to má přeprava
+   jako volný text. Přidán 30.9.2026 na žádost Lukáše: "chci mít stejnou
+   databázi zákazníků i v dopravách", viz claude/prepravy_dopravci_navrh.md. */
+function pvPartnerFieldHtml(d){
+  const matched = zakaznici.find(z=>z.nazev===d.partner);
+  const addingNew = !!window._pvAddingZakaznik;
+  const manualMode = !addingNew && !matched && !!d.partner;
+  let html = `
+    <select class="finp" id="pv-partner-select" onchange="pvPartnerSelect(this.value)">
+      <option value="" ${!matched && !manualMode && !addingNew ? 'selected':''}>— vyber ze seznamu —</option>
+      ${[...zakaznici].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(z=>`<option value="${z.id}" ${matched && matched.id===z.id ? 'selected':''}>${escapeHtml(z.nazev)}</option>`).join('')}
+      <option value="__manual__" ${manualMode?'selected':''}>Jiná firma (nezadat do databáze)</option>
+      <option value="__new__" ${addingNew?'selected':''}>+ Nový zákazník…</option>
+    </select>
+  `;
+  if(manualMode){
+    html += `<input class="finp" id="pv-partner" style="margin-top:8px" placeholder="Název firmy" value="${escapeAttr(d.partner)}" oninput="window._pvData.partner=this.value">`;
+  }
+  if(addingNew){
+    html += `
+      <div class="card" style="margin-top:8px">
+        <div class="field-lbl" style="padding-top:0">Nový zákazník</div>
+        <input class="finp" id="pv-newzak-name" placeholder="Název firmy" value="${escapeAttr(window._pvNewZakName||'')}" oninput="window._pvNewZakName=this.value">
+        <div style="height:6px"></div>
+        <button class="btn btn-primary" onclick="pvSaveNewZakaznik()">✓ Uložit zákazníka a použít</button>
+        <button class="btn" onclick="pvCancelNewZakaznik()">Zrušit</button>
+      </div>
+    `;
+  }
+  return html;
+}
+function pvPartnerSelect(value){
+  pvSyncFields();
+  const d = window._pvData;
+  if(value===''){ d.partner=''; window._pvAddingZakaznik=false; renderPrepravaSheet(); return; }
+  if(value==='__manual__'){
+    window._pvAddingZakaznik=false;
+    if(zakaznici.some(z=>z.nazev===d.partner)) d.partner='';
+    renderPrepravaSheet(); return;
+  }
+  if(value==='__new__'){ window._pvAddingZakaznik=true; window._pvNewZakName=''; renderPrepravaSheet(); return; }
+  window._pvAddingZakaznik=false;
+  const z = zakaznici.find(z=>z.id===value);
+  if(z) d.partner = z.nazev;
+  renderPrepravaSheet();
+}
+function pvSaveNewZakaznik(){
+  pvSyncFields();
+  const name = (window._pvNewZakName||'').trim();
+  if(!name){ toast('⚠ Zadej název firmy'); return; }
+  const z = {id:uid(), nazev:name, materialy:[]};
+  zakaznici.push(z); fbSet('zakaznici', z.id, z);
+  window._pvData.partner = z.nazev;
+  window._pvAddingZakaznik=false; window._pvNewZakName='';
+  toast('✓ Zákazník uložen do databáze');
+  renderPrepravaSheet();
+}
+function pvCancelNewZakaznik(){
+  pvSyncFields();
+  window._pvAddingZakaznik=false;
   renderPrepravaSheet();
 }
 
@@ -3091,6 +3156,9 @@ window.pvSetStav = pvSetStav;
 window.pvDopravceSelect = pvDopravceSelect;
 window.pvSaveNewDopravce = pvSaveNewDopravce;
 window.pvCancelNewDopravce = pvCancelNewDopravce;
+window.pvPartnerSelect = pvPartnerSelect;
+window.pvSaveNewZakaznik = pvSaveNewZakaznik;
+window.pvCancelNewZakaznik = pvCancelNewZakaznik;
 window.pvSave = pvSave;
 window.pvDelete = pvDelete;
 window.pvZalozit = pvZalozit;
