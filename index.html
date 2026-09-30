@@ -587,7 +587,11 @@ let planSelDay = todayStr();
    dokument, takže úpravy různých záznamů různými lidmi ve stejnou chvíli se
    nepřepisují — poslední zápis vyhrává jen v rámci JEDNOHO záznamu. */
 let dbReady = false;
-const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false, todo:false, dopravci:false, prepravy:false};
+// dopravci/prepravy jsou rovnou true — appka na ně nečeká při startu (30.9.2026: dokud
+// nejsou správně nastavená Firestore pravidla pro tyhle kolekce, "Missing or insufficient
+// permissions" by jinak zablokovalo načtení úplně celé appky pro všechny). Jakmile se
+// pravidla opraví, onSnapshot níže data doplní na pozadí.
+const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false, todo:false, dopravci:true, prepravy:true};
 function workPlanKeyFromDoc(id, data){ return (data.date||'')+'|'+(data.worker||''); }
 
 function maybeFinishLoading(){
