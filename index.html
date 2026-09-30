@@ -92,6 +92,10 @@ button,input,textarea,select{font-family:inherit;color:inherit}
 .pill-done{background:#fbe6f0;color:var(--pink)}
 .pill-late{background:#fbe9e9;color:var(--red)}
 .pill-recurring{background:#eef2e6;color:#5c7a3a}
+.pill-poptano{background:#eef0f2;color:var(--dim)}
+.pill-domlouvame{background:#fff4d6;color:#a67c00}
+.pill-potvrzeno{background:#e5f5ec;color:var(--green)}
+.pill-zamitnuto{background:#fbe9e9;color:var(--red)}
 .empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:14px}
 
 /* CELÉ BUŇKY BAREVNĚ PODLE STAVU (úkoly, nakládky/vykládky) */
@@ -259,6 +263,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   </div>
   <div class="role-switch">
     <button class="icon-btn" id="zk-btn" onclick="openZakaznikList()" style="display:none" aria-label="Zákazníci">👥</button>
+    <button class="icon-btn" id="dp-btn" onclick="openDopravceList()" style="display:none" aria-label="Dopravci">🚛</button>
     <div class="user-badge" id="user-badge" style="display:none">
       <span class="user-badge-name" id="user-badge-name"></span>
       <button class="icon-btn" id="logout-btn" onclick="doLogout()" aria-label="Odhlásit" title="Odhlásit">⏻</button>
@@ -363,6 +368,12 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <div id="todo-list"></div>
 </div>
 
+<!-- PŘEPRAVY (jen Lukáš + Ondřej) — poptávky/domluvy s externími dopravci, viz claude/prepravy_dopravci_navrh.md -->
+<div class="screen" id="screen-prepravy">
+  <div class="chips" id="prep-chips"></div>
+  <div id="prep-list"></div>
+</div>
+
 <div class="fab-wrap" id="fab-wrap">
   <button class="fab" id="fab-btn"></button>
 </div>
@@ -374,6 +385,7 @@ button,input,textarea,select{font-family:inherit;color:inherit}
   <button class="tabbar-btn" id="tab-kapacita" onclick="switchTab('kapacita',this)" style="display:none"><span class="ic">👷</span><span class="lbl">Plán práce</span></button>
   <button class="tabbar-btn" id="tab-galerie" onclick="switchTab('galerie',this)"><span class="ic">📷</span><span class="lbl">Galerie</span></button>
   <button class="tabbar-btn" id="tab-todo" onclick="switchTab('todo',this)"><span class="ic">📝</span><span class="lbl">To-do</span></button>
+  <button class="tabbar-btn" id="tab-prepravy" onclick="switchTab('prepravy',this)" style="display:none"><span class="ic">🚚</span><span class="lbl">Přepravy</span></button>
   <button class="tabbar-btn" id="tab-profitabilita" onclick="switchTab('profitabilita',this)" style="display:none"><span class="ic">💰</span><span class="lbl">Profit</span></button>
 </div>
 
@@ -456,6 +468,8 @@ const COL = {
   zakaznici: collection(fdb,'zakaznici'),
   ukoly_sablony: collection(fdb,'ukoly_sablony'),
   todo: collection(fdb,'todo'),
+  dopravci: collection(fdb,'dopravci'),
+  prepravy: collection(fdb,'prepravy'),
 };
 function fbSet(colName, id, data){
   setDoc(doc(COL[colName], id), JSON.parse(JSON.stringify(data))).catch(e=>{
@@ -542,6 +556,9 @@ let workPlan = {}; // key `${date}|${worker}` -> {typ, vykladkaId, poznamka}
 let zakaznici = []; // {id, nazev, materialy:[typ,...]}
 let sablony = []; // {id, nazev, popis, resitel, priorita, frekvence:'tydne'|'mesicne', den, aktivni, zadavatel, ts}
 let todoItems = []; // {id, person, text, done, ts} — rychlý osobní seznam, každý vidí jen svoje (filtr podle person)
+let dopravci = []; // {id, nazev, kontakt} — databáze externích dopravců, viz claude/prepravy_dopravci_navrh.md
+let prepravy = []; // {id, typ:'nakladka'|'vykladka', partner, dopravce, trasa, termin, material, cena, poznamka, stav:'poptano'|'domlouvame'|'potvrzeno'|'zamitnuto', zalozil, ts, nakladkaId}
+let prepFilter = 'aktivni'; // aktivni (poptáno+domlouváme) | vse
 
 // Živá data Kasa/Výkup/Opravy (jiné Firebase projekty, viz vpdb/evdb výše) a
 // sdílené prodejní ceny pro Profitabilitu — mimo dbReady gate, appka na ně nečeká.
@@ -570,7 +587,7 @@ let planSelDay = todayStr();
    dokument, takže úpravy různých záznamů různými lidmi ve stejnou chvíli se
    nepřepisují — poslední zápis vyhrává jen v rámci JEDNOHO záznamu. */
 let dbReady = false;
-const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false, todo:false};
+const loaded = {nakladky:false, ukoly:false, workplan:false, zakaznici:false, sablony:false, todo:false, dopravci:false, prepravy:false};
 function workPlanKeyFromDoc(id, data){ return (data.date||'')+'|'+(data.worker||''); }
 
 function maybeFinishLoading(){
@@ -620,6 +637,18 @@ onSnapshot(COL.ukoly_sablony, snap => {
 onSnapshot(COL.todo, snap => {
   todoItems = snap.docs.map(d=>d.data());
   loaded.todo = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.dopravci, snap => {
+  dopravci = snap.docs.map(d=>d.data());
+  loaded.dopravci = true;
+  maybeFinishLoading(); if(dbReady) renderAll();
+}, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
+
+onSnapshot(COL.prepravy, snap => {
+  prepravy = snap.docs.map(d=>d.data());
+  loaded.prepravy = true;
   maybeFinishLoading(); if(dbReady) renderAll();
 }, err => { console.error(err); document.getElementById('offline-banner').style.display='block'; });
 
@@ -983,14 +1012,18 @@ function nastavRoliPoPrihlaseni(osoba){
   document.getElementById('user-badge').style.display = '';
   document.getElementById('user-badge-name').textContent = osoba.name;
   document.getElementById('zk-btn').style.display = (role==='owner') ? '' : 'none';
+  document.getElementById('dp-btn').style.display = (role==='owner') ? '' : 'none';
+  document.getElementById('tab-prepravy').style.display = (role==='owner') ? '' : 'none';
   // Skladník vidí záložku Přehled taky, ale zúženou — viz renderPrehled()
   // (skryje se mu Výkup/Třídění/Kasa, nechá se Nakládky/Vykládky/Opravy/Osobní úkoly).
   // Profitabilita i Plán práce jsou dočasně schované ze záložek (17.9.2026 — teď
   // nepotřeba, ať appka není přeplácaná). Kód i data zůstávají, jen se nezobrazují.
-  // I kdyby se tam někdo dostal starým odkazem/historií prohlížeče, přesměrujeme pryč.
+  // Přepravy (30.9.2026) vidí jen role owner (Lukáš+Ondřej), Martin ne — viz
+  // claude/prepravy_dopravci_navrh.md. I kdyby se tam někdo dostal starým
+  // odkazem/historií prohlížeče, přesměrujeme pryč.
   document.getElementById('tab-profitabilita').style.display = 'none';
   document.getElementById('tab-kapacita').style.display = 'none';
-  if (activeScreen()==='profitabilita' || activeScreen()==='kapacita'){
+  if (activeScreen()==='profitabilita' || activeScreen()==='kapacita' || (activeScreen()==='prepravy' && role!=='owner')){
     switchTab('prehled', document.getElementById('tab-prehled'));
   }
   if (dbReady) renderAll();
@@ -1422,7 +1455,7 @@ function renderNakladky(){
           <div class="item-title">${nkTypLabel(n.typ)} · ${nkPartnerDisplay(n)}
             <span class="pill ${n.stav==='vyrizene'?'pill-done':'pill-new'}">${n.stav==='vyrizene'?'Vyřízeno':'Nové'}</span>
           </div>
-          <div class="item-meta">${fmtDate(n.datum)} ${n.cas} · ${matSum}</div>
+          <div class="item-meta">${fmtDate(n.datum)} ${n.cas} · ${matSum}${n.dopravce?' · 🚛 '+escapeHtml(n.dopravce):''}</div>
           ${n.poznamka ? `<div class="item-note">📝 ${escapeHtml(n.poznamka)}</div>` : ''}
         </div>
       </div>`;
@@ -1441,9 +1474,9 @@ function renderNakladky(){
 function setNakFilter(v){ nakFilter=v; renderNakladky(); }
 
 /* ============ SHEET: NAKLÁDKA / VYKLÁDKA ============ */
-function openNakladka(id){
+function openNakladka(id, prefill){
   const rec = id ? nakladky.find(n=>n.id===id) : null;
-  const data = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', dodavatel:'', zakaznik:'', adresaNakladky:'', adresaVykladky:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: person, ts:Date.now(), _isNew:!rec};
+  const data = rec ? JSON.parse(JSON.stringify(rec)) : Object.assign({id:uid(), typ:'vykladka', datum:selDay, cas:'09:00', partner:'', dodavatel:'', zakaznik:'', adresaNakladky:'', adresaVykladky:'', dopravce:'', poznamka:'', stav:'nove', ocekavano:'ok', material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}], dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'', zalozil: person, ts:Date.now(), prepravaId:null, _isNew:!rec}, prefill||{});
   window._nkData = data;
   window._nkAddingCustomer = false;
   window._nkNewCustName = '';
@@ -1464,6 +1497,7 @@ function nkSyncFields(){
   if(g('nk-zakaznik')) d.zakaznik = g('nk-zakaznik').value;
   if(g('nk-adresa-nakladky')) d.adresaNakladky = g('nk-adresa-nakladky').value;
   if(g('nk-adresa-vykladky')) d.adresaVykladky = g('nk-adresa-vykladky').value;
+  if(g('nk-dopravce')) d.dopravce = g('nk-dopravce').value;
   if(g('nk-poznamka')) d.poznamka = g('nk-poznamka').value;
   if(g('nk-neshoda-komentar')) d.neshodaKomentar = g('nk-neshoda-komentar').value;
 }
@@ -1632,6 +1666,7 @@ function renderNakladkaSheet(){
     <button class="close-x" onclick="closeSheet()">✕</button>
     <div class="sheet-title">${isNew?'Nová nakládka / vykládka / překup':nkTypLabel(data.typ)+' — '+nkPartnerDisplay(data)}</div>
     <div class="sheet-sub">${isNew?'':'Založil '+data.zalozil+(data.provedl?' · Nakládal/vykládal '+data.provedl:'')}</div>
+    ${data.prepravaId ? `<div class="item-note">🔗 Založeno z přepravy</div>` : ''}
 
     <div class="field-lbl">Typ</div>
     <div class="seg">
@@ -1697,6 +1732,9 @@ function renderNakladkaSheet(){
     <div id="nk-neshoda-block">${nkNeshodaHtml(data)}</div>
     <div id="nk-photos-block">${nkPhotosHtml(data)}</div>
     <div id="nk-checklist-block">${nkChecklistHtml(data)}</div>
+
+    <div class="field-lbl">Dopravce (nepovinné)</div>
+    <input class="finp" id="nk-dopravce" placeholder="Název dopravce / SPZ" value="${escapeAttr(data.dopravce||'')}" ${canEditPlan?'':'disabled'}>
 
     <div class="field-lbl">Poznámka</div>
     <textarea class="ftxt" id="nk-poznamka" ${canEditPlan?'':'disabled'}>${escapeHtml(data.poznamka)}</textarea>
@@ -2100,6 +2138,327 @@ function zkDelete(id){
   fbDelete('zakaznici', id);
   toast('🗑 Zákazník smazán');
   renderZakaznikListSheet();
+}
+
+/* ============ SHEET: DOPRAVCI (databáze externích dopravců) ============
+   Viz claude/prepravy_dopravci_navrh.md — stejný vzor jako Zákazníci (2025),
+   jen bez pole materialy, s prostým kontaktem. */
+function openDopravceList(){
+  renderDopravceListSheet();
+  openSheet();
+}
+function renderDopravceListSheet(){
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">Dopravci</div>
+    <div class="sheet-sub">Databáze externích dopravců — jméno se předvyplní při zadávání přepravy.</div>
+    <div style="height:6px"></div>
+    <div id="dp-list"></div>
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="openDopravce(null)">+ Přidat dopravce</button>
+  `;
+  const el = document.getElementById('dp-list');
+  if(!dopravci.length){ el.innerHTML = '<div class="empty">Zatím žádní dopravci.</div>'; return; }
+  el.innerHTML = [...dopravci].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(x=>`
+    <div class="item" onclick="openDopravce('${x.id}')">
+      <div class="item-dot" style="background:var(--blue)"></div>
+      <div class="item-body">
+        <div class="item-title">${escapeHtml(x.nazev)}</div>
+        <div class="item-meta">${escapeHtml(x.kontakt||'—')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function openDopravce(id){
+  const rec = id ? dopravci.find(x=>x.id===id) : null;
+  window._dpData = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), nazev:'', kontakt:'', _isNew:true};
+  renderDopravceSheet();
+}
+function renderDopravceSheet(){
+  const d = window._dpData;
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${d._isNew?'Nový dopravce':d.nazev}</div>
+
+    <div class="field-lbl">Název dopravce</div>
+    <input class="finp" id="dp-nazev" value="${escapeAttr(d.nazev)}" placeholder="Název firmy / jméno" oninput="window._dpData.nazev=this.value">
+
+    <div class="field-lbl">Kontakt (telefon / e-mail)</div>
+    <input class="finp" id="dp-kontakt" value="${escapeAttr(d.kontakt||'')}" placeholder="Nepovinné" oninput="window._dpData.kontakt=this.value">
+
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="dpSave()">✓ Uložit dopravce</button>
+    <button class="btn" onclick="renderDopravceListSheet()">← Zpět na seznam</button>
+    ${(!d._isNew && role==='owner') ? `<button class="btn btn-danger" onclick="dpDelete('${d.id}')">Smazat dopravce</button>` : ''}
+  `;
+}
+function dpSave(){
+  const d = window._dpData;
+  if(!d.nazev.trim()){ toast('⚠ Zadej název dopravce'); return; }
+  delete d._isNew;
+  const idx = dopravci.findIndex(x=>x.id===d.id);
+  if(idx>=0) dopravci[idx]=d; else dopravci.push(d);
+  fbSet('dopravci', d.id, d);
+  toast('✓ Dopravce uložen');
+  renderDopravceListSheet();
+}
+function dpDelete(id){
+  dopravci = dopravci.filter(x=>x.id!==id);
+  fbDelete('dopravci', id);
+  toast('🗑 Dopravce smazán');
+  renderDopravceListSheet();
+}
+
+/* ============ ZÁLOŽKA: PŘEPRAVY (jen Lukáš + Ondřej) ============
+   Poptávky/domluvy s externími dopravci, nezávislé na Nakládkách/Vykládkách,
+   dokud se termín s dopravcem nepotvrdí — pak se dá "překlopit" do skutečné
+   nakládky/vykládky (viz pvZalozit níže). Viz claude/prepravy_dopravci_navrh.md. */
+const PREPRAVA_STAV = {
+  poptano:{label:'Poptáno', color:'#7d7d7d'},
+  domlouvame:{label:'Domlouváme', color:'#c99400'},
+  potvrzeno:{label:'Potvrzeno', color:'var(--green)'},
+  zamitnuto:{label:'Zamítnuto', color:'var(--red)'},
+};
+function renderPrepravy(){
+  document.getElementById('prep-chips').innerHTML = `
+    <button class="chip${prepFilter==='aktivni'?' on':''}" onclick="setPrepFilter('aktivni')">Aktivní</button>
+    <button class="chip${prepFilter==='vse'?' on':''}" onclick="setPrepFilter('vse')">Vše</button>`;
+
+  let list = [...prepravy];
+  if(prepFilter==='aktivni') list = list.filter(p=>p.stav==='poptano' || p.stav==='domlouvame');
+  list.sort((a,b)=> (a.termin||'9999').localeCompare(b.termin||'9999') || (b.ts||0)-(a.ts||0));
+
+  const el = document.getElementById('prep-list');
+  if(!list.length){ el.innerHTML = '<div class="empty">Žádné přepravy v tomhle výběru.</div>'; }
+  else{
+    el.innerHTML = list.map(p=>{
+      const st = PREPRAVA_STAV[p.stav] || PREPRAVA_STAV.poptano;
+      return `<div class="item" onclick="openPreprava('${p.id}')">
+        <div class="item-dot" style="background:${st.color}"></div>
+        <div class="item-body">
+          <div class="item-title">${nkTypLabel(p.typ)} · ${escapeHtml(p.dopravce||'dopravce neurčen')}
+            <span class="pill pill-${p.stav}">${st.label}</span>
+          </div>
+          <div class="item-meta">${p.termin?fmtDate(p.termin):'termín neurčen'}${p.trasa?' · '+escapeHtml(p.trasa):''}${p.partner?' · '+escapeHtml(p.partner):''}</div>
+          ${p.nakladkaId ? `<div class="item-note">🔗 Založeno v Nakládkách</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const fab = document.getElementById('fab-btn');
+  fab.textContent = '+ Nová přeprava';
+  fab.onclick = () => openPreprava(null);
+  document.getElementById('fab-wrap').style.display = 'block';
+}
+function setPrepFilter(v){ prepFilter=v; renderPrepravy(); }
+
+function openPreprava(id){
+  const rec = id ? prepravy.find(p=>p.id===id) : null;
+  window._pvData = rec ? JSON.parse(JSON.stringify(rec)) : {id:uid(), typ:'vykladka', partner:'', dopravce:'', trasa:'', termin:'', material:'', cena:'', poznamka:'', stav:'poptano', zalozil:person, ts:Date.now(), nakladkaId:null, _isNew:true};
+  window._pvAddingDopravce = false; window._pvNewDopName=''; window._pvNewDopKontakt='';
+  renderPrepravaSheet();
+  openSheet();
+}
+function pvSyncFields(){
+  const d = window._pvData;
+  const g = id => document.getElementById(id);
+  if(g('pv-partner')) d.partner = g('pv-partner').value;
+  if(g('pv-dopravce')) d.dopravce = g('pv-dopravce').value;
+  if(g('pv-trasa')) d.trasa = g('pv-trasa').value;
+  if(g('pv-termin')) d.termin = g('pv-termin').value;
+  if(g('pv-material')) d.material = g('pv-material').value;
+  if(g('pv-cena')) d.cena = g('pv-cena').value;
+  if(g('pv-poznamka')) d.poznamka = g('pv-poznamka').value;
+}
+function pvSetTyp(v){ pvSyncFields(); window._pvData.typ=v; renderPrepravaSheet(); }
+function pvSetStav(v){ pvSyncFields(); window._pvData.stav=v; renderPrepravaSheet(); }
+
+function renderPrepravaSheet(){
+  const d = window._pvData;
+  const isNew = d._isNew;
+  const sheet = document.getElementById('sheet');
+  sheet.innerHTML = `
+    <div class="sheet-handle"></div>
+    <button class="close-x" onclick="closeSheet()">✕</button>
+    <div class="sheet-title">${isNew?'Nová přeprava':(d.dopravce||'Přeprava')}</div>
+    <div class="sheet-sub">${isNew?'':'Založil '+d.zalozil}</div>
+
+    <div class="field-lbl">Týká se</div>
+    <div class="seg">
+      <div class="seg-btn ${d.typ==='vykladka'?'on':''}" onclick="pvSetTyp('vykladka')">Vykládka</div>
+      <div class="seg-btn ${d.typ==='nakladka'?'on':''}" onclick="pvSetTyp('nakladka')">Nakládka</div>
+    </div>
+
+    <div class="field-lbl">Dopravce</div>
+    ${pvDopravceFieldHtml(d)}
+
+    <div class="field-lbl">Zákazník / dodavatel (nepovinné)</div>
+    <input class="finp" id="pv-partner" placeholder="Název firmy" value="${escapeAttr(d.partner||'')}" oninput="window._pvData.partner=this.value">
+
+    <div class="field-lbl">Trasa</div>
+    <input class="finp" id="pv-trasa" placeholder="Odkud → kam" value="${escapeAttr(d.trasa||'')}" oninput="window._pvData.trasa=this.value">
+
+    <div class="row2">
+      <div>
+        <div class="field-lbl">Termín</div>
+        <input class="finp" type="date" id="pv-termin" value="${d.termin||''}" oninput="window._pvData.termin=this.value">
+      </div>
+      <div>
+        <div class="field-lbl">Cena dopravy</div>
+        <input class="finp" id="pv-cena" placeholder="Kč (nepovinné)" value="${escapeAttr(d.cena||'')}" oninput="window._pvData.cena=this.value">
+      </div>
+    </div>
+
+    <div class="field-lbl">Materiál / náklad</div>
+    <input class="finp" id="pv-material" placeholder="např. 30× EUR paleta" value="${escapeAttr(d.material||'')}" oninput="window._pvData.material=this.value">
+
+    <div class="field-lbl">Stav</div>
+    <div class="seg">
+      ${Object.entries(PREPRAVA_STAV).map(([k,v])=>`<div class="seg-btn ${d.stav===k?'on':''}" style="${d.stav===k?`background:${v.color};border-color:${v.color}`:''}" onclick="pvSetStav('${k}')">${v.label}</div>`).join('')}
+    </div>
+
+    <div class="field-lbl">Poznámka</div>
+    <textarea class="ftxt" id="pv-poznamka" oninput="window._pvData.poznamka=this.value">${escapeHtml(d.poznamka||'')}</textarea>
+
+    <div style="height:6px"></div>
+    <button class="btn btn-primary" onclick="pvSave()">✓ Uložit přepravu</button>
+
+    ${d.nakladkaId
+      ? `<div class="item-note" style="margin:8px 0">🔗 Založeno v Nakládkách</div>
+         <button class="btn" onclick="switchToNakladka('${d.nakladkaId}')">Otevřít ${nkTypLabel(d.typ).toLowerCase()}</button>`
+      : (d.stav==='potvrzeno' ? `<button class="btn btn-primary" onclick="pvZalozit()">🚚 Založit ${nkTypLabel(d.typ).toLowerCase()}</button>` : '')}
+
+    ${(!isNew && role==='owner') ? `<button class="btn btn-danger" onclick="pvDelete('${d.id}')">Smazat přepravu</button>` : ''}
+  `;
+}
+
+function pvDopravceFieldHtml(d){
+  const matched = dopravci.find(x=>x.nazev===d.dopravce);
+  const addingNew = !!window._pvAddingDopravce;
+  const manualMode = !addingNew && !matched && !!d.dopravce;
+  let html = `
+    <select class="finp" id="pv-dopravce-select" onchange="pvDopravceSelect(this.value)">
+      <option value="" ${!matched && !manualMode && !addingNew ? 'selected':''}>— vyber ze seznamu —</option>
+      ${[...dopravci].sort((a,b)=>a.nazev.localeCompare(b.nazev)).map(x=>`<option value="${x.id}" ${matched && matched.id===x.id ? 'selected':''}>${escapeHtml(x.nazev)}</option>`).join('')}
+      <option value="__manual__" ${manualMode?'selected':''}>Jiný dopravce (nezadat do databáze)</option>
+      <option value="__new__" ${addingNew?'selected':''}>+ Nový dopravce…</option>
+    </select>
+  `;
+  if(manualMode){
+    html += `<input class="finp" id="pv-dopravce" style="margin-top:8px" placeholder="Název dopravce" value="${escapeAttr(d.dopravce)}" oninput="window._pvData.dopravce=this.value">`;
+  }
+  if(addingNew){
+    html += `
+      <div class="card" style="margin-top:8px">
+        <div class="field-lbl" style="padding-top:0">Nový dopravce</div>
+        <input class="finp" id="pv-newdop-name" placeholder="Název dopravce" value="${escapeAttr(window._pvNewDopName||'')}" oninput="window._pvNewDopName=this.value">
+        <input class="finp" id="pv-newdop-kontakt" style="margin-top:8px" placeholder="Telefon / e-mail (nepovinné)" value="${escapeAttr(window._pvNewDopKontakt||'')}" oninput="window._pvNewDopKontakt=this.value">
+        <div style="height:6px"></div>
+        <button class="btn btn-primary" onclick="pvSaveNewDopravce()">✓ Uložit dopravce a použít</button>
+        <button class="btn" onclick="pvCancelNewDopravce()">Zrušit</button>
+      </div>
+    `;
+  }
+  return html;
+}
+function pvDopravceSelect(value){
+  pvSyncFields();
+  const d = window._pvData;
+  if(value===''){ d.dopravce=''; window._pvAddingDopravce=false; renderPrepravaSheet(); return; }
+  if(value==='__manual__'){
+    window._pvAddingDopravce=false;
+    if(dopravci.some(x=>x.nazev===d.dopravce)) d.dopravce='';
+    renderPrepravaSheet(); return;
+  }
+  if(value==='__new__'){ window._pvAddingDopravce=true; window._pvNewDopName=''; window._pvNewDopKontakt=''; renderPrepravaSheet(); return; }
+  window._pvAddingDopravce=false;
+  const x = dopravci.find(x=>x.id===value);
+  if(x) d.dopravce = x.nazev;
+  renderPrepravaSheet();
+}
+function pvSaveNewDopravce(){
+  pvSyncFields();
+  const name = (window._pvNewDopName||'').trim();
+  if(!name){ toast('⚠ Zadej název dopravce'); return; }
+  const x = {id:uid(), nazev:name, kontakt:(window._pvNewDopKontakt||'').trim()};
+  dopravci.push(x); fbSet('dopravci', x.id, x);
+  window._pvData.dopravce = x.nazev;
+  window._pvAddingDopravce=false; window._pvNewDopName=''; window._pvNewDopKontakt='';
+  toast('✓ Dopravce uložen do databáze');
+  renderPrepravaSheet();
+}
+function pvCancelNewDopravce(){
+  pvSyncFields();
+  window._pvAddingDopravce=false;
+  renderPrepravaSheet();
+}
+
+function pvPopis(d){
+  return (d.dopravce||'dopravce neurčen') + (d.trasa?' – '+d.trasa:'') + (d.termin?' ('+fmtDate(d.termin)+')':'');
+}
+function pvSave(){
+  pvSyncFields();
+  const d = window._pvData;
+  if(!(d.dopravce||'').trim()){ toast('⚠ Vyber nebo zadej dopravce'); return; }
+  const byloNove = !!d._isNew;
+  const puvodni = byloNove ? null : prepravy.find(p=>p.id===d.id);
+  delete d._isNew;
+  const idx = prepravy.findIndex(p=>p.id===d.id);
+  if(idx>=0) prepravy[idx]=d; else prepravy.unshift(d);
+  fbSet('prepravy', d.id, d);
+  closeSheet(); renderPrepravy();
+  toast('✓ Uloženo');
+
+  // Notifikace jen Lukáš+Ondřej (appka je pro tuhle záložku viditelná jen jim),
+  // Martin do vyjednávání s dopravci nepotřebuje vidět — viz claude/prepravy_dopravci_navrh.md.
+  if(byloNove){
+    poslatNotifikaci('🚛 Nová poptávka na přepravu: '+pvPopis(d), ['ondrej']);
+  } else if(puvodni && puvodni.stav !== d.stav){
+    const stavTxt = {poptano:'poptáno', domlouvame:'domlouváme', potvrzeno:'✅ potvrzeno', zamitnuto:'❌ zamítnuto'}[d.stav] || d.stav;
+    poslatNotifikaci('🚛 Přeprava — '+stavTxt+': '+pvPopis(d), ['ondrej']);
+  }
+}
+function pvDelete(id){
+  const rec = prepravy.find(p=>p.id===id);
+  prepravy = prepravy.filter(p=>p.id!==id);
+  fbDelete('prepravy', id);
+  closeSheet(); renderPrepravy();
+  toast('🗑 Smazáno');
+  if(rec) poslatNotifikaci('🗑 Smazána poptávka na přepravu: '+pvPopis(rec), ['ondrej']);
+}
+/* Založí novou nakládku/vykládku předvyplněnou z potvrzené přepravy (typ, partner,
+   termín, dopravce, materiál/poznámka) a propojí oba záznamy obousměrně (d.nakladkaId
+   / nk.prepravaId) — viz claude/prepravy_dopravci_navrh.md. Materiál v přepravě je jen
+   volný text (odhad pro domluvu), takže se do řádků nakládky nerozpadá automaticky —
+   přenese se jako součást poznámky a řádek materiálu se doplní ručně jako dnes. */
+function pvZalozit(){
+  pvSyncFields();
+  const d = window._pvData;
+  if(d.stav!=='potvrzeno'){ toast('⚠ Nejdřív označ přepravu jako Potvrzeno'); return; }
+  if(d.nakladkaId){ switchToNakladka(d.nakladkaId); return; }
+  const nk = {
+    id:uid(), typ:d.typ, datum: d.termin||selDay, cas:'09:00',
+    partner: d.partner||'', dodavatel:'', zakaznik:'', adresaNakladky:'', adresaVykladky:'',
+    dopravce: d.dopravce||'',
+    poznamka: [d.material?('Náklad dle domluvy: '+d.material):'', d.poznamka||''].filter(Boolean).join(' — '),
+    stav:'nove', ocekavano:'ok',
+    material:[{typ:PALLETS[0], dlQty:'', realQty:null, tridirna:null, sklad:null, opravna:null}],
+    dlFoto:null, fotoSklad:[], fotoTridirna:[], fotoOpravna:[], neshodaKomentar:'',
+    zalozil: person, ts:Date.now(), prepravaId:d.id,
+  };
+  nakladky.unshift(nk);
+  fbSet('nakladky', nk.id, nk);
+  d.nakladkaId = nk.id;
+  const idx = prepravy.findIndex(p=>p.id===d.id);
+  if(idx>=0) prepravy[idx]=d; else prepravy.unshift(d);
+  fbSet('prepravy', d.id, d);
+  toast('✓ '+nkTypLabel(d.typ)+' založena z přepravy');
+  switchToNakladka(nk.id);
 }
 
 /* ============ SHEET: PRAVIDELNÉ ÚKOLY (šablony) ============ */
@@ -2680,6 +3039,7 @@ function renderAll(){
   if(s==='kapacita') renderKapacita();
   if(s==='galerie') renderGalerie();
   if(s==='todo') renderTodo();
+  if(s==='prepravy') renderPrepravy();
   if(s==='profitabilita') renderProfitabilita();
 }
 // Role/jméno/viditelnost záložek se nastaví až v nastavRoliPoPrihlaseni() po přihlášení.
@@ -2716,6 +3076,20 @@ window.nkDelete = nkDelete;
 window.openZakaznikList = openZakaznikList;
 window.openZakaznik = openZakaznik;
 window.zkToggleMat = zkToggleMat;
+window.openDopravceList = openDopravceList;
+window.openDopravce = openDopravce;
+window.dpSave = dpSave;
+window.dpDelete = dpDelete;
+window.setPrepFilter = setPrepFilter;
+window.openPreprava = openPreprava;
+window.pvSetTyp = pvSetTyp;
+window.pvSetStav = pvSetStav;
+window.pvDopravceSelect = pvDopravceSelect;
+window.pvSaveNewDopravce = pvSaveNewDopravce;
+window.pvCancelNewDopravce = pvCancelNewDopravce;
+window.pvSave = pvSave;
+window.pvDelete = pvDelete;
+window.pvZalozit = pvZalozit;
 window.zkSave = zkSave;
 window.zkDelete = zkDelete;
 window.renderZakaznikListSheet = renderZakaznikListSheet;
