@@ -1582,7 +1582,7 @@ function nkPhotosHtml(data){
   if(data.typ!=='vykladka') return '';
   const trig = nkPhotoTriggers(data);
   let html = '';
-  if(trig.sklad) html += nkPhotoGridHtml(data,'fotoSklad','Foto dobrých palet (rovnou na sklad)','Dokumentace stavu palet bez závad',2);
+  if(trig.sklad) html += nkPhotoGridHtml(data,'fotoSklad','Foto dobrých palet (nepovinné)','Jen když chceš zdokumentovat stav palet',0);
   if(trig.tridirna) html += nkPhotoGridHtml(data,'fotoTridirna','Foto poškozených palet k třídění','Vyfoť nejvíc poškozené kusy z dodávky',6);
   if(trig.opravna) html += nkPhotoGridHtml(data,'fotoOpravna','Foto kamionu / stavu palet pro opravnu','Jak palety vypadaly při vyložení',2);
   return html;
@@ -1594,7 +1594,7 @@ function nkChecklist(d){
   if(d.typ==='vykladka'){
     items.push({label:'Foto dodacího listu', ok: !!d.dlFoto});
     items.push({label:'Počty podle DL i reálně vyplněné u všech položek', ok: !t.dlMissing && !t.realMissing});
-    if(trig.sklad) items.push({label:`Foto dobrých palet — min. 2 (${(d.fotoSklad||[]).length}/2)`, ok:(d.fotoSklad||[]).length>=2});
+    // Foto dobrých palet už není povinné (odebráno 13.10.2026 na žádost kolegů) — jen volitelné.
     if(trig.tridirna) items.push({label:`Foto poškozených palet k třídění — min. 6 (${(d.fotoTridirna||[]).length}/6)`, ok:(d.fotoTridirna||[]).length>=6});
     if(trig.opravna){
       items.push({label:`Foto kamionu pro opravnu — min. 2 (${(d.fotoOpravna||[]).length}/2)`, ok:(d.fotoOpravna||[]).length>=2});
