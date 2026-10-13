@@ -2754,7 +2754,7 @@ function renderUkolSheet(){
     <div class="row2">
       <div>
         <div class="field-lbl">Řešitel</div>
-        <select class="fsel" id="uk-resitel">${resitelOptions.map(r=>`<option ${r===d.resitel?'selected':''}>${r}</option>`).join('')}</select>
+        <select class="fsel" id="uk-resitel">${resitelOptions.map(r=>`<option ${r===d.resitel?'selected':''}>${r}</option>`).join('')}${(isNew && role!=='sklad') ? `<option value="__vsichni__" ${d.resitel==='__vsichni__'?'selected':''}>👥 Všichni 3 (každý svůj úkol)</option>` : ''}</select>
       </div>
       <div>
         <div class="field-lbl">Termín</div>
@@ -2853,6 +2853,22 @@ function ukSave(stav){
   if(!docSizeOk(d)){ toast('⚠ Moc velká fotka — vyfoť znovu nebo ji smaž'); return; }
   const byloNoveUk = !!d._isNew;
   delete d._isNew;
+
+  // Nový úkol pro všechny 3: založí se samostatný úkol pro každého (Lukáš, Ondřej, Martin),
+  // aby každý mohl svůj odškrtnout zvlášť. Jedna společná Telegram zpráva místo tří.
+  if(byloNoveUk && d.resitel==='__vsichni__'){
+    const vsichni = ['Lukáš','Ondřej','Martin'];
+    vsichni.forEach((jmeno,i)=>{
+      const kopie = Object.assign({}, JSON.parse(JSON.stringify(d)), {id: i===0 ? d.id : uid(), resitel: jmeno});
+      ukoly.unshift(kopie);
+      fbSet('ukoly', kopie.id, kopie);
+    });
+    closeSheet(); renderUkoly();
+    toast('✓ Úkol založen pro všechny 3');
+    poslatNotifikaci('🆕 Nový úkol pro všechny 3: '+d.nazev+' (termín '+fmtDate(d.termin)+')', ['martin','ondrej']);
+    return;
+  }
+
   const idx = ukoly.findIndex(u=>u.id===d.id);
   if(idx>=0) ukoly[idx]=d; else ukoly.unshift(d);
   fbSet('ukoly', d.id, d); closeSheet(); renderUkoly();
